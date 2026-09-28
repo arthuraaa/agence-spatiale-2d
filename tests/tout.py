@@ -7,7 +7,7 @@ Lance tous les tests, un fichier après l'autre, et résume.
     python tests/tout.py aides boost  seulement les fichiers dont le nom contient ces mots
 
 Sans écran : l'affichage et le son passent par les pilotes « dummy » de SDL.
-Code de sortie 1 si un test échoue (utile pour GitHub Actions).
+Code de sortie 1 si un test échoue (utile aux scripts, comme outils/android/construire.sh).
 """
 import os
 import subprocess

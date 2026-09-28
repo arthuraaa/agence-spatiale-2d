@@ -40,21 +40,25 @@ La construction Android utilise **buildozer** (python-for-android), réglé dans
 (NDK r28c), format AAB pour la publication. La version se règle à un seul endroit,
 `jeu/version.py` (`python outils/nouvelle_version.py 1.6.1` la fait avancer partout).
 
-- **Sans rien installer, avec GitHub Actions** (recommandé, surtout sous Windows) : mets le
-  dossier dans un dépôt GitHub. À chaque envoi, le workflow *Tests* lance les tests et le
-  workflow *Android* construit un **APK de test**, à télécharger dans l'onglet *Actions*
-  (section *Artifacts*). Compter 30 à 60 min la première fois, beaucoup moins ensuite.
-  L'**AAB signé** pour Google Play se construit à la demande (*Run workflow*, case
-  « publication ») une fois ta clé d'envoi enregistrée dans les secrets du dépôt : voir
-  `PUBLICATION.md`.
-- **Sur ta machine**, sous Linux ou WSL2 (Ubuntu sous Windows) :
-  ```
-  sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config \
-       zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev lld
-  pip install -r requirements-build.txt
-  buildozer android debug            # -> bin/*.apk, à installer sur le téléphone
-  buildozer android deploy run logcat   # installe et lance sur un téléphone branché en USB
-  ```
+Tout se fait **sur ton PC**, sous Linux ou sous Windows avec **WSL2** (Ubuntu dans Windows),
+car buildozer ne tourne pas directement sous Windows :
+
+1. **Une seule fois**, installe Ubuntu dans Windows : dans PowerShell en administrateur,
+   `wsl --install -d Ubuntu-24.04`, redémarre, puis crée ton utilisateur Ubuntu.
+2. Dans Ubuntu, copie le projet dans ton dossier Linux (sur le disque Windows, `/mnt/c/...`,
+   la construction serait des dizaines de fois plus lente) :
+   `cp -r /mnt/c/Users/TOI/chemin/agence-spatiale-2d ~/ && cd ~/agence-spatiale-2d`
+3. `bash outils/android/preparer.sh` : une seule fois (Java, compilateurs, buildozer).
+4. `bash outils/android/construire.sh debug` : l'**APK de test**, dans `bin/` (30 à 60 min la
+   première fois, le temps de télécharger le SDK et de compiler Python ; quelques minutes
+   ensuite). `explorer.exe bin` ouvre le dossier dans Windows : envoie l'APK sur ton
+   téléphone et installe-le.
+5. `bash outils/android/construire.sh release` : l'**AAB signé** pour Google Play, avec ta clé
+   d'envoi (`bash outils/android/creer_cle.sh`, une seule fois) : voir `PUBLICATION.md`.
+
+Garde **une seule copie** du projet, celle d'Ubuntu (`~/agence-spatiale-2d`), et travaille
+dedans, Claude Code compris : lancé dans Ubuntu, il fait lui-même les constructions et corrige
+ce qui coince. Depuis Windows, cette copie se voit dans l'explorateur, sous « Linux ».
 - **APK de test rapide, sans SDK Android** (une minute, pour essayer une modification sur
   ton téléphone) : `python outils/apk_rapide/construire.py`. Il réutilise un moteur déjà
   compilé : **jamais pour Google Play** (voir `outils/apk_rapide/LISEZMOI.md`).
@@ -391,10 +395,10 @@ tests/                tests sans écran : python tests/tout.py (ou un seul fichi
 outils/               verifier_paquet.py, nouvelle_version.py, generer_visuels_store.py,
                       apk_rapide/ (APK de test sans SDK)
 store/                fiche Google Play : textes FR/EN, icône, bannière, captures
-docs/                 politique de confidentialité (GitHub Pages)
+docs/                 politique de confidentialité (texte à mettre en ligne, sur Google Sites)
 android/              attributs ajoutés au manifeste Android
 buildozer.spec, icone.png, presplash.png   construction Android
-.github/workflows/    tests.yml (tests à chaque envoi), android.yml (APK et AAB)
+outils/android/       préparer Ubuntu/WSL2, construire (APK ou AAB), créer la clé d'envoi
 CLAUDE.md             guide pour Claude Code      PUBLICATION.md  publier sur Google Play
 LICENCES.md           licences des composants libres
 ```

@@ -41,5 +41,5 @@ Première version publiée : construction de fusées, orbites, amarrage, Lune et
 Jeu > Simulation. Mots-clés : espace, fusée, orbite, Lune, simulation, Apollo.
 
 ## Coordonnées
-E-mail : À COMPLÉTER — Site (facultatif) : la page GitHub du projet.
-Politique de confidentialité : https://TON-PSEUDO.github.io/TON-DEPOT/ (voir PUBLICATION.md)
+E-mail : À COMPLÉTER — Site (facultatif) : aucun.
+Politique de confidentialité : l'adresse de ta page Google Sites (voir PUBLICATION.md, étape 5)

@@ -3,8 +3,8 @@
 #   buildozer android debug      -> bin/*.apk  (à installer sur ton téléphone pour tester)
 #   buildozer android release    -> bin/*.aab  (signé avec ta clé d'envoi : voir PUBLICATION.md)
 #
-# buildozer ne marche que sous Linux (ou WSL2 sous Windows). Le plus simple : laisser GitHub
-# Actions construire à ta place (.github/workflows/android.yml). Voir README.md.
+# buildozer ne marche que sous Linux (ou WSL2 sous Windows) :
+#     bash outils/android/construire.sh debug     (ou release)   -- voir README.md
 
 [app]
 title = Agence Spatiale 2D
@@ -16,7 +16,7 @@ package.domain = org.agencespatiale
 
 source.dir = .
 source.include_exts = py,ttf,png,txt
-source.exclude_dirs = tests, outils, store, docs, android, bin, .buildozer, .github, __pycache__, cache_sons, cache_musique
+source.exclude_dirs = tests, outils, store, docs, android, bin, .buildozer, .venv-android, .git, __pycache__, cache_sons, cache_musique
 source.exclude_patterns = sauvegarde.json, reglages.json, erreur.txt, presplash.png
 
 # La version (le nom affiché) est lue dans jeu/version.py, la seule source.

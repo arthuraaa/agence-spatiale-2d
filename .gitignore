@@ -11,6 +11,7 @@ cache_musique/
 
 # Construction Android
 .buildozer/
+.venv-android/
 bin/
 outils/apk_rapide/cache/
 

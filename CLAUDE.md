@@ -18,6 +18,8 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 - Chaque bug corrigé s'accompagne d'un test qui l'aurait attrapé.
 - Mets à jour `README.md`, et ce fichier si l'architecture ou les commandes changent.
 - Jamais de clé de signature (`*.jks`) ni de mot de passe dans le dépôt.
+- Arthur **n'utilise pas GitHub** (ni Actions, ni Pages) : tout se construit en local, sous
+  Linux ou WSL2, et git ne sert qu'en local. Ne propose pas GitHub.
 - Ne casse pas les sauvegardes existantes (`jeu/sauvegarde.py`) : un nouveau champ se lit
   avec une valeur par défaut (`d.get("champ", défaut)`).
 - Pour « voir » l'écran : capture sans fenêtre (`SDL_VIDEODRIVER=dummy`, puis
@@ -33,9 +35,10 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 | … au format d'un téléphone 20:9 | `AGENCE_ECRAN=2400x1080 python main.py --tactile` |
 | Tous les tests | `python tests/tout.py` (`--rapide` : sans les plus longs) |
 | Un fichier de tests | `python tests/test_boosters.py` (ou `python tests/tout.py boost`) |
-| APK de test et AAB signé | GitHub Actions : workflow `Android` (voir « Construction Android ») |
-| APK de test en local (Linux/WSL2) | `buildozer android debug` → `bin/*.apk` |
-| AAB signé en local | `buildozer android release` (variables `P4A_RELEASE_*`, voir PUBLICATION.md) |
+| Préparer Ubuntu/WSL2 (une fois) | `bash outils/android/preparer.sh` |
+| APK de test | `bash outils/android/construire.sh debug` → `bin/*.apk` |
+| AAB signé pour Google Play | `bash outils/android/construire.sh release` → `bin/*.aab` |
+| Créer la clé d'envoi (une fois) | `bash outils/android/creer_cle.sh` → `~/.agence-spatiale/` |
 | Vérifier un paquet pour Google Play | `python outils/verifier_paquet.py bin/*.aab` |
 | Nouvelle version | `python outils/nouvelle_version.py 1.6.1` |
 | Visuels de la fiche Play Store | `python outils/generer_visuels_store.py` |
@@ -69,9 +72,9 @@ jeu/vol.py, hangar.py, menu.py   les écrans                   jeu/polices/   De
 tests/                  tests sans écran ; tests/tout.py les lance tous
 outils/                 verifier_paquet.py, nouvelle_version.py, generer_visuels_store.py, apk_rapide/
 store/                  fiche Play Store : textes FR/EN, icône, bannière, captures
-docs/                   politique de confidentialité (GitHub Pages)
+docs/                   politique de confidentialité (à mettre en ligne sur Google Sites)
 android/                attributs ajoutés au manifeste Android
-buildozer.spec          construction Android      .github/workflows/  tests.yml, android.yml
+buildozer.spec          construction Android      outils/android/  préparer, construire, clé
 ```
 
 ## Contraintes Android (à respecter)
@@ -97,10 +100,12 @@ buildozer.spec          construction Android      .github/workflows/  tests.yml,
 16 Ko), AAB en publication, arm64-v8a + armeabi-v7a, version lue dans `jeu/version.py`,
 versionCode = `android.numeric_version` (= `VERSION_CODE`, vérifié par `tests/test_version.py`).
 
-**Important : cette construction n'a encore jamais été lancée** (elle a été préparée sans
-accès au SDK Android). Première tâche : la faire passer dans GitHub Actions (workflow
-`Android`), vérifier le paquet avec `outils/verifier_paquet.py`, puis l'essayer sur un vrai
-téléphone. Pistes si elle échoue :
+**Important : cette construction n'a encore jamais abouti.** Elle a été préparée dans un
+environnement sans accès au SDK Android : `preparer.sh` s'y exécute, buildozer lit le spec et
+récupère python-for-android, puis s'arrête faute de pouvoir télécharger Apache Ant et le SDK.
+Première tâche, dans Ubuntu/WSL2 : `bash outils/android/preparer.sh`, puis
+`bash outils/android/construire.sh debug` (qui passe `outils/verifier_paquet.py` sur le
+résultat), puis essayer l'APK sur un vrai téléphone. Pistes si elle échoue :
 
 1. Lire la **fin** du journal : c'est en général une recette python-for-android qui échoue.
 2. Essayer `p4a.branch = develop` dans `buildozer.spec` (la dernière version publiée de
@@ -108,9 +113,12 @@ téléphone. Pistes si elle échoue :
 3. Recette `pygame` qui ne compile pas : chercher dans les issues de
    kivy/python-for-android ; en dernier recours, une recette locale (`p4a.local_recipes`).
 4. Erreur Cython : essayer une autre version dans `requirements-build.txt`.
-5. Cache abîmé : supprimer le cache dans l'onglet Actions (Caches).
+5. Construction abîmée : `buildozer android clean` (ou supprimer `.buildozer/`), puis relancer.
+6. buildozer 1.5.0 (PyPI) prend python-for-android sur sa branche `master` : si une
+   correction récente manque, `p4a.branch = develop`.
 
-Buildozer ne tourne pas sous Windows : utiliser WSL2 (Ubuntu) ou GitHub Actions.
+Buildozer ne tourne pas sous Windows : WSL2 (Ubuntu), avec le projet dans le système de
+fichiers Linux (`~/agence-spatiale-2d`), jamais sous `/mnt/c` (beaucoup trop lent).
 L'**APK rapide** (`outils/apk_rapide/`) sert seulement aux tests : il réutilise le moteur
 compilé d'un APK « donneur » (ancien, non aligné sur 16 Ko) et `verifier_paquet.py` le refuse.
 

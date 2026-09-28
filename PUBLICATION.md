@@ -18,54 +18,54 @@ Règles de Google Play (à revérifier au moment de publier, elles changent chaq
 
 L'identifiant de l'appli (`package.domain` + `package.name` dans `buildozer.spec`,
 aujourd'hui `org.agencespatiale.agencespatiale`) **ne pourra plus jamais changer** après le
-premier envoi. Prends quelque chose qui est à toi, par exemple `io.github.TONPSEUDO.agencespatiale`
-ou `fr.TONNOM.agencespatiale` (minuscules, chiffres, points).
+premier envoi. Prends quelque chose qui est à toi, par exemple `fr.TONPSEUDO.agencespatiale`
+(minuscules, chiffres, points ; pas besoin de posséder le nom de domaine).
 
 À savoir : les APK de test déjà installés sur ton téléphone utilisent
 `org.agencespatiale.agencespatiale` avec une clé de test. Si tu gardes cet identifiant, il
 faudra désinstaller la version de test avant d'installer celle du Play Store.
 
-## 2. Créer ta clé d'envoi (10 min, une seule fois)
+## 2. Préparer Ubuntu sous Windows (WSL2) (30 min, une seule fois)
+
+buildozer, l'outil qui fabrique l'appli Android, ne tourne que sous Linux. Sous Windows, on
+utilise WSL2 : un vrai Ubuntu dans Windows, fourni par Microsoft.
+
+1. **Une seule fois**, installe Ubuntu dans Windows : dans PowerShell en administrateur,
+   `wsl --install -d Ubuntu-24.04`, redémarre, puis crée ton utilisateur Ubuntu.
+2. Dans Ubuntu, copie le projet dans ton dossier Linux (sur le disque Windows, `/mnt/c/...`,
+   la construction serait des dizaines de fois plus lente) :
+   `cp -r /mnt/c/Users/TOI/chemin/agence-spatiale-2d ~/ && cd ~/agence-spatiale-2d`
+3. `bash outils/android/preparer.sh` : une seule fois (Java, compilateurs, buildozer).
+
+## 3. Créer ta clé d'envoi (5 min, une seule fois)
 
 Google signe l'appli finale avec sa propre clé (« signature d'application Play ») ; toi, tu
-signes chaque envoi avec ta **clé d'envoi**. Il faut Java (JDK 17) pour l'outil `keytool`.
+signes chaque envoi avec ta **clé d'envoi**. Dans Ubuntu :
 
 ```
-keytool -genkeypair -v -keystore cle-envoi-agence.jks -alias envoi -keyalg RSA -keysize 2048 -validity 10000
+bash outils/android/creer_cle.sh
 ```
 
-- Garde `cle-envoi-agence.jks` **hors du dépôt** (le `.gitignore` bloque les `.jks`), en
-  deux exemplaires (clé USB + gestionnaire de mots de passe), avec son mot de passe.
+keytool demande un mot de passe, puis ton nom. La clé est rangée **hors du projet**, dans
+`~/.agence-spatiale/cle-envoi.jks` (alias `envoi`) : elle ne finit jamais dans une archive.
+
+- **Sauvegarde-la tout de suite** en deux exemplaires (clé USB + gestionnaire de mots de
+  passe), avec son mot de passe. `explorer.exe ~/.agence-spatiale` l'ouvre dans Windows.
 - Si tu la perds, Google peut la remplacer (demande via la Play Console), mais c'est long.
 
-## 3. Construire l'AAB signé
-
-### Avec GitHub Actions (recommandé, rien à installer)
-
-1. Mets le dossier dans un dépôt GitHub (privé ou public).
-2. *Settings > Secrets and variables > Actions > New repository secret*, trois secrets :
-   - `CLE_ENVOI_BASE64` : la clé encodée en base64. Sous Windows (PowerShell) :
-     `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cle-envoi-agence.jks")) | Set-Clipboard`
-     puis colle ; sous Linux : `base64 -w0 cle-envoi-agence.jks`.
-   - `CLE_ENVOI_ALIAS` : `envoi`
-   - `CLE_ENVOI_MOT_DE_PASSE` : le mot de passe choisi.
-3. *Actions > Android > Run workflow*, coche **publication**. (Ou pousse une étiquette :
-   `git tag v1.6.0 && git push --tags`.)
-4. À la fin (30 à 60 min la première fois), télécharge l'artefact **aab-google-play**.
-   Le workflow a déjà passé `outils/verifier_paquet.py` dessus.
-
-### Sur ta machine (Linux ou WSL2)
+## 4. Construire l'AAB signé
 
 ```
-pip install -r requirements-build.txt
-export P4A_RELEASE_KEYSTORE=~/cles/cle-envoi-agence.jks
-export P4A_RELEASE_KEYSTORE_PASSWD='...'  P4A_RELEASE_KEYALIAS=envoi  P4A_RELEASE_KEYALIAS_PASSWD='...'
-buildozer android release
-python outils/verifier_paquet.py bin/*.aab
+bash outils/android/construire.sh release
 ```
 
-Contrôle facultatif de la version d'Android visée, avec bundletool
-(<https://github.com/google/bundletool/releases>) :
+Le script lance d'abord les tests, demande le mot de passe de la clé, construit l'AAB
+(30 à 60 min la première fois, puis quelques minutes), puis le contrôle avec
+`outils/verifier_paquet.py` (alignement 16 Ko, 64 bits). Le fichier est dans `bin/`
+(`explorer.exe bin` pour le retrouver dans Windows et l'envoyer dans la Play Console).
+
+Contrôle facultatif de la version d'Android visée, avec bundletool (un simple fichier
+`bundletool.jar` à télécharger, <https://github.com/google/bundletool/releases>) :
 
 ```
 java -jar bundletool.jar dump manifest --bundle bin/*.aab --xpath /manifest/uses-sdk/@android:targetSdkVersion
@@ -73,20 +73,24 @@ java -jar bundletool.jar dump manifest --bundle bin/*.aab --xpath /manifest/uses
 
 La réponse doit être `36` (ou plus).
 
-## 4. Publier la politique de confidentialité (10 min)
+## 5. Mettre en ligne la politique de confidentialité (10 min)
 
-1. Complète les « À COMPLÉTER » de `docs/politique-confidentialite.md`, puis régénère la page :
-   demande à Claude Code « régénère docs/index.html depuis le Markdown », ou modifie
-   `docs/index.html` à la main.
-2. Dans le dépôt GitHub : *Settings > Pages*, source « Deploy from a branch », branche `main`,
-   dossier `/docs`. L'adresse sera `https://TONPSEUDO.github.io/TONDEPOT/`.
+Google demande une adresse web publique, même si le jeu ne collecte rien. Le plus simple,
+gratuit et avec le même compte Google que la Play Console : **Google Sites**.
 
-## 5. Compte développeur Google Play (1 à quelques jours)
+1. Complète les « À COMPLÉTER » de `docs/politique-confidentialite.md` (ton e-mail).
+2. Sur <https://sites.google.com> : *Nouveau site* (vide), titre « Agence Spatiale 2D –
+   Confidentialité », colle le texte, puis *Publier*. Note l'adresse (du genre
+   `https://sites.google.com/view/agence-spatiale-2d`).
+
+(`docs/index.html` est aussi une page toute prête, si tu préfères un autre hébergement.)
+
+## 6. Compte développeur Google Play (1 à quelques jours)
 
 <https://play.google.com/console> : 25 $ une seule fois, vérification d'identité (pièce
 d'identité). Choisis un compte **personnel**.
 
-## 6. Créer l'application dans la Play Console
+## 7. Créer l'application dans la Play Console
 
 *Créer une application* : nom « Agence Spatiale 2D », langue par défaut **français**,
 **Jeu**, **Gratuit**, accepte les déclarations.
@@ -100,7 +104,7 @@ d'identité). Choisis un compte **personnel**.
 | Classification du contenu | Questionnaire IARC, catégorie « Jeu » : pas de violence envers des personnes (seulement des fusées qui explosent), ni sexe, ni langage grossier, ni drogue, ni jeu d'argent, ni échanges entre joueurs, ni partage de position : classement attendu PEGI 3 / Tout public |
 | Public cible | **13 ans et plus** (le plus simple ; viser les enfants ajoute les exigences du programme « Familles ») |
 | Sécurité des données | L'appli **ne collecte ni ne partage aucune donnée** (pas d'internet, sauvegarde locale uniquement) |
-| Politique de confidentialité | l'adresse GitHub Pages de l'étape 4 |
+| Politique de confidentialité | l'adresse Google Sites de l'étape 5 |
 | Appli gouvernementale, fonctionnalités financières, santé, actualités | Non / aucune |
 
 ### Fiche Play Store (tout est dans `store/`)
@@ -116,7 +120,7 @@ d'identité). Choisis un compte **personnel**.
 
 Pour refaire les visuels après un changement du jeu : `python outils/generer_visuels_store.py`.
 
-## 7. Tests (au moins 14 jours)
+## 8. Tests (au moins 14 jours)
 
 1. **Test interne** (immédiat, jusqu'à 100 personnes) : *Tester > Tests internes*, crée une
    version, envoie l'AAB, ajoute ton adresse e-mail, installe depuis le lien. Vérifie : le
@@ -131,21 +135,22 @@ Pour refaire les visuels après un changement du jeu : `python outils/generer_vi
 3. Après 14 jours : *Tableau de bord > Demander l'accès à la production*, réponds au
    questionnaire (comment s'est passé le test, ce que tu as corrigé).
 
-## 8. Production
+## 9. Production
 
 *Production > Créer une version*, envoie l'AAB (le même, ou un nouveau), notes de version
 (dans `store/fiche-fr.md`), puis *Envoyer pour examen*. L'examen prend en général quelques
 jours.
 
-## 9. Mises à jour
+## 10. Mises à jour
 
 ```
 python outils/nouvelle_version.py 1.6.1     # version + versionCode (+1), partout à la fois
-git commit -am "Version 1.6.1" && git tag v1.6.1 && git push && git push --tags
+git commit -am "Version 1.6.1"             # l'historique, en local
+bash outils/android/construire.sh release  # l'AAB signé, dans bin/
 ```
 
-GitHub Actions construit l'AAB signé ; envoie-le dans la Play Console (Production > Créer
-une version). Chaque envoi doit avoir un versionCode plus grand que le précédent.
+Envoie l'AAB dans la Play Console (Production > Créer une version). Chaque envoi doit avoir
+un versionCode plus grand que le précédent.
 
 **Chaque année vers août**, Google relève la version d'Android minimale visée : passe
 `android.api` à la valeur exigée dans `buildozer.spec` (et dans `tests/test_version.py`),
@@ -153,7 +158,8 @@ reconstruis, teste, publie.
 
 ## En cas de souci
 
-- **La construction buildozer échoue** : lis la fin du journal dans GitHub Actions. Pistes
+- **La construction buildozer échoue** : lis la fin du journal dans le terminal (ou demande
+  à Claude Code, lancé dans Ubuntu, de relancer la construction et de corriger). Pistes
   dans `CLAUDE.md` (section « Construction Android »), par exemple essayer
   `p4a.branch = develop` dans `buildozer.spec`.
 - **La Play Console refuse l'AAB** (16 Ko, version d'Android visée…) : `python

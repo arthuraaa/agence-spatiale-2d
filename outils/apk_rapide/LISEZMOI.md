@@ -1,7 +1,6 @@
 # APK de test rapide (sans SDK Android)
 
-Pour essayer une modification sur ton téléphone en une minute, sans installer le SDK
-Android ni attendre GitHub Actions. **Pas pour Google Play** : le moteur réutilisé (celui
+Pour essayer une modification sur ton téléphone en une minute, sans installer le SDK Android ni attendre une construction buildozer. **Pas pour Google Play** : le moteur réutilisé (celui
 d'un APK « donneur » libre, python-for-android avec Python 3.10 et pygame 2.1.0) vise une
 ancienne version d'Android et n'est pas aligné sur 16 Ko. `outils/verifier_paquet.py` le
 refuse d'ailleurs.
