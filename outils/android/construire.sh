@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Construit le jeu pour Android avec buildozer, sous Ubuntu ou WSL2.
+# Construit le jeu pour Android avec buildozer (Ubuntu, ou tout Linux).
 #     bash outils/android/construire.sh debug      APK de TEST            -> bin/*.apk
+#     bash outils/android/construire.sh deploy     APK de test, installé et lancé sur le
+#                                                  téléphone branché en USB, avec son journal
 #     bash outils/android/construire.sh release    AAB SIGNÉ, Google Play -> bin/*.aab
 # La première fois, buildozer télécharge le SDK et le NDK Android et compile Python et SDL :
 # compter 30 à 60 minutes. Ensuite, quelques minutes.
@@ -18,6 +20,19 @@ case "$MODE" in
 debug)
     buildozer android debug
     PAQUET="$(ls -t bin/*.apk | head -1)"
+    ;;
+deploy)
+    if command -v adb >/dev/null && ! adb devices | grep -qw device$; then
+        echo "Aucun téléphone détecté en USB. Sur le téléphone :"
+        echo "  1. Paramètres > À propos > appuie 7 fois sur « Numéro de build » (options développeur) ;"
+        echo "  2. Options pour les développeurs > active « Débogage USB » ;"
+        echo "  3. Branche-le, et accepte « Autoriser le débogage USB » qui s'affiche."
+        echo "Vérifie avec : adb devices   (le téléphone doit apparaître avec « device »)"
+        exit 1
+    fi
+    echo "== Construction, installation et lancement (Ctrl+C pour arrêter le journal)"
+    buildozer android debug deploy run logcat     # journal filtré : python et SDL (buildozer.spec)
+    exit 0
     ;;
 release)
     CLE="${AGENCE_CLE:-$HOME/.agence-spatiale/cle-envoi.jks}"
@@ -41,7 +56,7 @@ release)
     PAQUET="$(ls -t bin/*.aab | head -1)"
     ;;
 *)
-    echo "Usage : bash outils/android/construire.sh debug|release"
+    echo "Usage : bash outils/android/construire.sh debug|deploy|release"
     exit 1
     ;;
 esac
@@ -51,6 +66,10 @@ echo "== Contrôle du paquet pour Google Play"
 python outils/verifier_paquet.py "$PAQUET" || true
 echo
 echo "Fichier produit : $PAQUET"
+if [ "$MODE" = "debug" ]; then
+    echo "Pour l'installer sur ton téléphone branché en USB : adb install -r \"$PAQUET\""
+    echo "(ou directement : bash outils/android/construire.sh deploy)"
+fi
 if grep -qi microsoft /proc/version 2>/dev/null; then
     echo "Pour le voir dans l'explorateur Windows : explorer.exe bin"
 fi

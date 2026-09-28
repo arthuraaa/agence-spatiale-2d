@@ -1,4 +1,4 @@
-# Pour construire l'APK / l'AAB Android (Linux ou WSL2) : installé par outils/android/preparer.sh.
+# Pour construire l'APK / l'AAB Android (Ubuntu ou autre Linux) : installé par outils/android/preparer.sh.
 buildozer>=1.5
 cython>=3.0,<3.2
 setuptools

@@ -18,8 +18,9 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 - Chaque bug corrigé s'accompagne d'un test qui l'aurait attrapé.
 - Mets à jour `README.md`, et ce fichier si l'architecture ou les commandes changent.
 - Jamais de clé de signature (`*.jks`) ni de mot de passe dans le dépôt.
-- Arthur **n'utilise pas GitHub** (ni Actions, ni Pages) : tout se construit en local, sous
-  Linux ou WSL2, et git ne sert qu'en local. Ne propose pas GitHub.
+- Arthur travaille sous **Ubuntu** et **n'utilise pas GitHub** (ni Actions, ni Pages) : tout
+  se construit en local avec `outils/android/`, et git ne sert qu'en local. Ne propose pas
+  GitHub, ni de solution propre à Windows.
 - Ne casse pas les sauvegardes existantes (`jeu/sauvegarde.py`) : un nouveau champ se lit
   avec une valeur par défaut (`d.get("champ", défaut)`).
 - Pour « voir » l'écran : capture sans fenêtre (`SDL_VIDEODRIVER=dummy`, puis
@@ -35,8 +36,10 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 | … au format d'un téléphone 20:9 | `AGENCE_ECRAN=2400x1080 python main.py --tactile` |
 | Tous les tests | `python tests/tout.py` (`--rapide` : sans les plus longs) |
 | Un fichier de tests | `python tests/test_boosters.py` (ou `python tests/tout.py boost`) |
-| Préparer Ubuntu/WSL2 (une fois) | `bash outils/android/preparer.sh` |
+| Préparer Ubuntu (une fois) | `bash outils/android/preparer.sh` |
 | APK de test | `bash outils/android/construire.sh debug` → `bin/*.apk` |
+| Installer et lancer sur le téléphone (USB), avec le journal | `bash outils/android/construire.sh deploy` |
+| Journal d'un plantage sur le téléphone | `adb logcat -s python:D SDL:D` (et `erreur.txt` du jeu) |
 | AAB signé pour Google Play | `bash outils/android/construire.sh release` → `bin/*.aab` |
 | Créer la clé d'envoi (une fois) | `bash outils/android/creer_cle.sh` → `~/.agence-spatiale/` |
 | Vérifier un paquet pour Google Play | `python outils/verifier_paquet.py bin/*.aab` |
@@ -103,7 +106,7 @@ versionCode = `android.numeric_version` (= `VERSION_CODE`, vérifié par `tests/
 **Important : cette construction n'a encore jamais abouti.** Elle a été préparée dans un
 environnement sans accès au SDK Android : `preparer.sh` s'y exécute, buildozer lit le spec et
 récupère python-for-android, puis s'arrête faute de pouvoir télécharger Apache Ant et le SDK.
-Première tâche, dans Ubuntu/WSL2 : `bash outils/android/preparer.sh`, puis
+Première tâche (sous Ubuntu) : `bash outils/android/preparer.sh`, puis
 `bash outils/android/construire.sh debug` (qui passe `outils/verifier_paquet.py` sur le
 résultat), puis essayer l'APK sur un vrai téléphone. Pistes si elle échoue :
 
@@ -117,8 +120,7 @@ résultat), puis essayer l'APK sur un vrai téléphone. Pistes si elle échoue :
 6. buildozer 1.5.0 (PyPI) prend python-for-android sur sa branche `master` : si une
    correction récente manque, `p4a.branch = develop`.
 
-Buildozer ne tourne pas sous Windows : WSL2 (Ubuntu), avec le projet dans le système de
-fichiers Linux (`~/agence-spatiale-2d`), jamais sous `/mnt/c` (beaucoup trop lent).
+Arthur est sous Ubuntu : buildozer, adb et l'USB y fonctionnent directement.
 L'**APK rapide** (`outils/apk_rapide/`) sert seulement aux tests : il réutilise le moteur
 compilé d'un APK « donneur » (ancien, non aligné sur 16 Ko) et `verifier_paquet.py` le refuse.
 

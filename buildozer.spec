@@ -3,7 +3,7 @@
 #   buildozer android debug      -> bin/*.apk  (à installer sur ton téléphone pour tester)
 #   buildozer android release    -> bin/*.aab  (signé avec ta clé d'envoi : voir PUBLICATION.md)
 #
-# buildozer ne marche que sous Linux (ou WSL2 sous Windows) :
+# buildozer tourne sous Linux (Ubuntu) :
 #     bash outils/android/construire.sh debug     (ou release)   -- voir README.md
 
 [app]

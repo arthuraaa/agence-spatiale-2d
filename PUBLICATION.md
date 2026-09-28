@@ -25,17 +25,15 @@ premier envoi. Prends quelque chose qui est à toi, par exemple `fr.TONPSEUDO.ag
 `org.agencespatiale.agencespatiale` avec une clé de test. Si tu gardes cet identifiant, il
 faudra désinstaller la version de test avant d'installer celle du Play Store.
 
-## 2. Préparer Ubuntu sous Windows (WSL2) (30 min, une seule fois)
+## 2. Préparer ta machine (15 min, une seule fois)
 
-buildozer, l'outil qui fabrique l'appli Android, ne tourne que sous Linux. Sous Windows, on
-utilise WSL2 : un vrai Ubuntu dans Windows, fourni par Microsoft.
+buildozer, l'outil qui fabrique l'appli Android, tourne sous Linux. Sous Ubuntu :
 
-1. **Une seule fois**, installe Ubuntu dans Windows : dans PowerShell en administrateur,
-   `wsl --install -d Ubuntu-24.04`, redémarre, puis crée ton utilisateur Ubuntu.
-2. Dans Ubuntu, copie le projet dans ton dossier Linux (sur le disque Windows, `/mnt/c/...`,
-   la construction serait des dizaines de fois plus lente) :
-   `cp -r /mnt/c/Users/TOI/chemin/agence-spatiale-2d ~/ && cd ~/agence-spatiale-2d`
-3. `bash outils/android/preparer.sh` : une seule fois (Java, compilateurs, buildozer).
+```
+bash outils/android/preparer.sh
+```
+
+(Sous Windows, il faudrait WSL2, avec le projet dans le dossier Ubuntu `~`.)
 
 ## 3. Créer ta clé d'envoi (5 min, une seule fois)
 
@@ -50,7 +48,7 @@ keytool demande un mot de passe, puis ton nom. La clé est rangée **hors du pro
 `~/.agence-spatiale/cle-envoi.jks` (alias `envoi`) : elle ne finit jamais dans une archive.
 
 - **Sauvegarde-la tout de suite** en deux exemplaires (clé USB + gestionnaire de mots de
-  passe), avec son mot de passe. `explorer.exe ~/.agence-spatiale` l'ouvre dans Windows.
+  passe), avec son mot de passe.
 - Si tu la perds, Google peut la remplacer (demande via la Play Console), mais c'est long.
 
 ## 4. Construire l'AAB signé
@@ -61,8 +59,8 @@ bash outils/android/construire.sh release
 
 Le script lance d'abord les tests, demande le mot de passe de la clé, construit l'AAB
 (30 à 60 min la première fois, puis quelques minutes), puis le contrôle avec
-`outils/verifier_paquet.py` (alignement 16 Ko, 64 bits). Le fichier est dans `bin/`
-(`explorer.exe bin` pour le retrouver dans Windows et l'envoyer dans la Play Console).
+`outils/verifier_paquet.py` (alignement 16 Ko, 64 bits). Le fichier est dans `bin/` : c'est
+lui que tu enverras dans la Play Console.
 
 Contrôle facultatif de la version d'Android visée, avec bundletool (un simple fichier
 `bundletool.jar` à télécharger, <https://github.com/google/bundletool/releases>) :
