@@ -1,0 +1,4 @@
+# Pour construire l'APK / l'AAB Android (Linux ou WSL2, ou GitHub Actions).
+buildozer>=1.5
+cython>=3.0,<3.2
+setuptools

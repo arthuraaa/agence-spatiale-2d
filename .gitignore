@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# Fichiers écrits par le jeu en jouant sur PC
+sauvegarde.json
+reglages.json
+erreur.txt
+cache_sons/
+cache_musique/
+
+# Construction Android
+.buildozer/
+bin/
+outils/apk_rapide/cache/
+
+# Clés de signature : JAMAIS dans le dépôt (sauf la clé de TEST de l'APK rapide)
+*.jks
+*.keystore
+!outils/apk_rapide/cle-test.jks

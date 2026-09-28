@@ -1,0 +1,247 @@
+# -*- coding: utf-8 -*-
+"""
+Scénarios : des missions historiques à rejouer.
+
+    Spoutnik 1 (1957), Vostok 1 (1961), Apollo 11 (1969), Apollo 13 (1970).
+
+Même moteur que les tutoriels (tutoriel.py) : une situation de départ, des objectifs validés
+tout seuls, une bulle qui explique, « Réessayer » après un crash, et une partie à part qui ne
+touche jamais la carrière. Mais on guide moins : chaque objectif dit quoi faire, pas chaque geste.
+
+Les vaisseaux changent de nom quand on les amarre ou les sépare : les objectifs suivent donc
+les pièces de commande (« la capsule d'Eagle est posée sur la Lune »), qui gardent leur
+propriétaire d'origine.
+"""
+from math import atan2, cos, sin, sqrt, pi
+
+from .orbite import Orbite
+from .vaisseau import construire
+from .tutoriel import Scenario, Etape, PAR_ID, placer_en_orbite, _vue_orbite
+
+CSM = ["port", "capsule", "decoupleur", "reservoir_m", "alize"]          # vaisseau de commande et de service
+LEM = ["port", "capsule", "reservoir_s", "moustique",                     # module lunaire : étage de remontée...
+       "decoupleur", "reservoir_m", "train", "moustique"]                 # ... et étage de descente
+
+
+# --------------------------------------------------------------------------- outils
+def vaisseau_de(u, nom):
+    """Le vaisseau (intact) qui contient la pièce de commande d'origine `nom`, ou None."""
+    for v in u.vaisseaux:
+        if not v.detruit and any(p.m.commande and p.proprietaire == nom for p in v.pieces):
+            return v
+    return None
+
+
+def _seul(u, nom, autre):
+    """Le vaisseau de `nom`, s'il n'est pas amarré à celui de `autre`."""
+    v = vaisseau_de(u, nom)
+    return v if v is not None and v is not vaisseau_de(u, autre) else None
+
+
+def _en_orbite(v, corps, marge=1000.0):
+    o = v.orbite if v is not None else None
+    return (v is not None and v.corps is corps and v.mode != "pose" and o is not None and o.elliptique
+            and o.rp > corps.R + corps.atm_h + marge)
+
+
+def _pose_sur(v, corps):
+    return v is not None and v.mode == "pose" and v.corps is corps
+
+
+def _pe(u):
+    a = u.actif
+    o = a.orbite if a is not None else None
+    return (o.rp - a.corps.R) if o is not None else 0.0
+
+
+def _ap(u):
+    a = u.actif
+    o = a.orbite if a is not None else None
+    return (o.ra - a.corps.R) if o is not None and o.elliptique else 0.0
+
+
+def _placer(u, v, x, y, vx, vy):
+    """Met un vaisseau neuf à un endroit précis (sur rails) et en fait le vaisseau actif."""
+    v.x, v.y, v.vx, v.vy = x, y, vx, vy
+    v.angle = atan2(vy, vx)
+    v.mode = "rails"
+    v.orbite = Orbite(x, y, vx, vy, v.corps.mu, u.t)
+    v.cache_etat = (None, None)
+    u.vaisseaux.append(v)
+    u.actif = v
+
+
+def _amarrer_au_depart(u, a, b):
+    """Amarre b nez à nez au port du haut de a (actif) : la pile de a reste en bas,
+    c'est donc son moteur qui pousse l'ensemble."""
+    ea = u.etat(a)
+    px, py, dx, dy = a.point_port(ea, "haut")
+    nez = b.geometrie().nez
+    b.angle = atan2(-dy, -dx)
+    b.x, b.y, b.vx, b.vy = px + dx * nez, py + dy * nez, ea[2], ea[3]
+    b.mode = "physique"
+    b.orbite = Orbite(b.x, b.y, b.vx, b.vy, a.corps.mu, u.t)
+    b.cache_etat = (None, None)
+    u.vaisseaux.append(b)
+    u._amarrer(a, b, "haut", "haut", u.etat(a), u.etat(b))
+    a.drapeaux.discard("amarre:" + b.nom)
+    u.messages.clear()
+    u.bruits.clear()
+
+
+# --------------------------------------------------------------------------- départs
+def _depart_pas_de_tir(nom, plan):
+    def depart(app, u):
+        u.lancer(nom, plan)
+        app.aller_vol()
+    return depart
+
+
+def _depart_apollo11(app, u):
+    lune = u.par_nom["Lune"]
+    columbia = construire("Columbia", CSM, lune)
+    placer_en_orbite(u, columbia, lune, 8000, 0.8)
+    _amarrer_au_depart(u, columbia, construire("Eagle", LEM, lune))
+    app.aller_vol()
+    _vue_orbite(app, lune.R + 8000)
+
+
+def _depart_apollo13(app, u):
+    """En route vers la Lune, sur une orbite terrestre très allongée (la Lune est loin, de l'autre côté)."""
+    terre, lune = u.terre, u.par_nom["Lune"]
+    mu = terre.mu
+    rp, ra = terre.R + 13_000, 2_300_000.0
+    a, e = 0.5 * (rp + ra), (ra - rp) / (ra + rp)
+    p = a * (1 - e * e)
+    nu = 2.1                                           # déjà bien parti vers le haut de l'orbite
+    lx, ly = lune.position_relative(u.t)
+    theta = atan2(ly, lx) + pi                         # à l'opposé de la Lune : pas de rencontre
+    r = p / (1 + e * cos(nu))
+    vr, vt = sqrt(mu / p) * e * sin(nu), sqrt(mu / p) * (1 + e * cos(nu))
+    ux, uy = cos(theta), sin(theta)
+    aquarius = construire("Aquarius", LEM, terre)
+    _placer(u, aquarius, r * ux, r * uy, vr * ux - vt * uy, vr * uy + vt * ux)
+    odyssey = construire("Odyssey", CSM, terre)
+    _amarrer_au_depart(u, aquarius, odyssey)           # Aquarius en bas : son moteur pousse l'ensemble
+    for piece in u.actif.pieces:                       # l'explosion : le module de service est vide
+        if piece.proprietaire == "Odyssey" and piece.m.carburant > 0:
+            piece.carburant = 0.0
+    app.aller_vol()
+    app.scene.cam.zoom = 0.9 * min(app.ecran.get_size()) / (2.6 * ra)
+
+
+# --------------------------------------------------------------------------- les missions
+def _ok_capsule_seule(u, nom):
+    """Le vaisseau actif est la capsule de `nom`, débarrassée de tout moteur (prête à rentrer)."""
+    v = u.actif
+    return v is not None and v is vaisseau_de(u, nom) and v.moteur_actif() is None
+
+
+def _tour_complet_debut(t, sc):
+    o = sc.u.actif.orbite
+    t.t_tour = sc.u.t + (o.periode if o is not None and o.elliptique else 600.0)
+
+
+MISSIONS = [
+    Scenario("spoutnik", "Spoutnik 1", "Le premier satellite artificiel",
+             _depart_pas_de_tir("Spoutnik", ["sonde", "reservoir_m", "alize", "decoupleur",
+                                             "reservoir_l", "reservoir_l", "mistral"]), [
+        Etape("4 octobre 1957. L'Union soviétique lance Spoutnik 1, une sphère de 58 cm munie de quatre "
+              "antennes. C'est le premier objet fabriqué par l'homme à tourner autour de la Terre. "
+              "À toi de rejouer ce lancement !"),
+        Etape("Décolle : {GAZ}.", lambda t, sc: sc.u.altitude(sc.u.actif) > 1000),
+        Etape("Penche doucement vers la droite et monte jusqu'à ce que l'apoapside dépasse 13 km. "
+              "Quand un étage est vide : {ETAGE}. [[Besoin d'aide ? {PILOTE}, puis « Mise en orbite ».|]]",
+              lambda t, sc: _ap(sc.u) > 13_000),
+        Etape("Près de l'apoapside, SAS sur PRO et pousse jusqu'à ce que le périapside dépasse 8 km.",
+              lambda t, sc: _pe(sc.u) > 8000),
+        Etape("Bip… bip… Spoutnik tourne autour de la Terre ! Pendant 21 jours, ses signaux ont été "
+              "captés par les radioamateurs du monde entier."),
+    ], conseil="penche doucement dès 1 km, et appuie sur ÉTAGE quand un étage est vide.",
+       genre="mission", annee=1957),
+
+    Scenario("vostok", "Vostok 1", "Gagarine, premier homme dans l'espace",
+             _depart_pas_de_tir("Vostok 1", ["capsule", "decoupleur", "reservoir_s", "moustique",
+                                             "decoupleur", "reservoir_m", "alize", "decoupleur",
+                                             # comme la vraie fusée : des boosters autour de l'étage central
+                                             ["reservoir_l", ["decoupleur_radial", "coiffe", "reservoir_l",
+                                                              "mistral"]], "reservoir_l", "mistral"]), [
+        Etape("12 avril 1961. Youri Gagarine devient le premier homme dans l'espace : à bord de "
+              "Vostok 1, il fait le tour de la Terre en 108 minutes, puis revient. À ton tour !"),
+        Etape("Mets Vostok 1 en orbite : périapside au-dessus de 8 km. "
+              "[[Besoin d'aide ? {PILOTE}, puis « Mise en orbite ».|]]",
+              lambda t, sc: _pe(sc.u) > 8000 and sc.u.actif.gaz == 0.0),
+        Etape("Fais un tour complet de la Terre : avance le temps ({TEMPS}) et regarde-toi tourner.",
+              lambda t, sc: sc.u.t >= getattr(t, "t_tour", 1e18), debut=_tour_complet_debut),
+        Etape("Pour rentrer, freine : SAS sur RÉTRO puis {GAZ}, jusqu'à ce que le périapside passe "
+              "sous 3 km. Coupe alors les gaz.",
+              lambda t, sc: _pe(sc.u) < 3000 and sc.u.actif.gaz == 0.0),
+        Etape("Largue le module de service ({ETAGE}) : seule la capsule a un bouclier et un parachute.",
+              lambda t, sc: _ok_capsule_seule(sc.u, "Vostok 1")),
+        Etape("Avance le temps jusqu'à l'atmosphère. Sous 250 m/s, ouvre le parachute : {PARACHUTE}.",
+              lambda t, sc: _pose_sur(vaisseau_de(sc.u, "Vostok 1"), sc.u.terre)),
+        Etape("Gagarine a sauté en parachute à 7 km d'altitude et s'est posé dans un champ, près de la "
+              "Volga. Il est devenu un héros sur toute la planète."),
+    ], conseil="au retour, largue le module de service avant l'atmosphère et ouvre le parachute "
+               "sous 250 m/s.", genre="mission", annee=1961),
+
+    Scenario("apollo11", "Apollo 11", "Se poser sur la Lune, puis rentrer",
+             _depart_apollo11, [
+        Etape("Juillet 1969. Columbia (le vaisseau de commande) et Eagle (le module lunaire) tournent "
+              "autour de la Lune, amarrés nez à nez. Michael Collins reste dans Columbia ; Neil "
+              "Armstrong et Buzz Aldrin vont se poser avec Eagle."),
+        Etape("Sépare Eagle de Columbia : {DESAMARRER}. Puis prends les commandes d'Eagle : {TAPER} "
+              "dessus, puis « Contrôler ». (N'appuie pas sur ÉTAGE : ça larguerait le module de service !)",
+              lambda t, sc: _seul(sc.u, "Eagle", "Columbia") is not None
+              and sc.u.actif is _seul(sc.u, "Eagle", "Columbia"), bouton="Désamarrer"),
+        Etape("Pose Eagle sur la Lune, en douceur. [[Besoin d'aide ? {PILOTE}, puis « Atterrissage "
+              "automatique ».|SAS sur RÉTRO, freine franchement vers 2 km, puis descends doucement.]]",
+              lambda t, sc: _pose_sur(vaisseau_de(sc.u, "Eagle"), sc.u.par_nom["Lune"])),
+        Etape("« Houston, ici la base de la Tranquillité. L'Aigle s'est posé. » Il faut maintenant "
+              "repartir : {ETAGE} largue l'étage de descente, qui sert de rampe de lancement. Remets "
+              "Eagle en orbite. [[{PILOTE}, puis « Mise en orbite ».|Monte droit, puis penche vers "
+              "l'horizon.]]",
+              lambda t, sc: _en_orbite(vaisseau_de(sc.u, "Eagle"), sc.u.par_nom["Lune"])
+              and not any(p.m.forme == "train" for p in vaisseau_de(sc.u, "Eagle").pieces)),
+        Etape("Rejoins Columbia et amarre-toi. [[{TAPER} sur Columbia, « Cibler », puis {PILOTE} et "
+              "« Rendez-vous et amarrage ».|{TAPER} sur Columbia, « Cibler », prépare une rencontre avec "
+              "un nœud de manœuvre, puis approche doucement au RCS.]]",
+              lambda t, sc: vaisseau_de(sc.u, "Eagle") is not None
+              and vaisseau_de(sc.u, "Eagle") is vaisseau_de(sc.u, "Columbia")),
+        Etape("L'équipage est réuni. Pour rentrer, désamarre Eagle ({DESAMARRER}), prends les commandes "
+              "de Columbia, puis quitte la Lune vers la Terre. [[{PILOTE}, puis « Retour vers la "
+              "Terre » et « Exécuter ».|Pousse en prograde jusqu'à quitter la Lune avec un périapside "
+              "terrestre sous 3 km.]]",
+              lambda t, sc: _seul(sc.u, "Columbia", "Eagle") is not None
+              and _seul(sc.u, "Columbia", "Eagle").corps is sc.u.terre
+              and _seul(sc.u, "Columbia", "Eagle").orbite.rp < sc.u.terre.R + sc.u.terre.atm_h),
+        Etape("Cap sur la Terre ! Avance le temps ({TEMPS}). Avant l'atmosphère, largue le module de "
+              "service ({ETAGE}), puis ouvre le parachute sous 250 m/s ({PARACHUTE}).",
+              lambda t, sc: _pose_sur(vaisseau_de(sc.u, "Columbia"), sc.u.terre)),
+        Etape("24 juillet 1969 : Columbia amerrit dans le Pacifique. Armstrong l'a dit en posant le "
+              "pied sur la Lune : c'est un petit pas pour un homme, un bond de géant pour l'humanité."),
+    ], conseil="pour te poser, freine dès « Freinage : MAINTENANT » (ou vers 2 km), puis descends "
+               "doucement. Le pilote automatique sait le faire.", genre="mission", annee=1969),
+
+    Scenario("apollo13", "Apollo 13", "« Houston, on a un problème »", _depart_apollo13, [
+        Etape("Avril 1970, en route vers la Lune. Un réservoir d'oxygène explose dans le module de "
+              "service d'Odyssey : plus de carburant. L'équipage se réfugie dans Aquarius, le module "
+              "lunaire, qui devient un canot de sauvetage. Plus question de se poser : il faut rentrer."),
+        Etape("Utilise le moteur d'Aquarius : SAS sur RÉTRO, puis pousse jusqu'à ce que ton "
+              "périapside passe sous 3 km (ta trajectoire replonge alors dans l'atmosphère). Coupe.",
+              lambda t, sc: sc.u.actif is not None and sc.u.actif.corps is sc.u.terre
+              and _pe(sc.u) < 3000 and sc.u.actif.gaz == 0.0),
+        Etape("Avance le temps ({TEMPS}). Avant l'atmosphère : désamarre Aquarius ({DESAMARRER}), prends "
+              "les commandes d'Odyssey ({TAPER} dessus, « Contrôler »), et largue son module de service "
+              "({ETAGE}).",
+              lambda t, sc: _ok_capsule_seule(sc.u, "Odyssey")),
+        Etape("Seule la capsule entre dans l'atmosphère. Sous 250 m/s, ouvre le parachute : {PARACHUTE}.",
+              lambda t, sc: _pose_sur(vaisseau_de(sc.u, "Odyssey"), sc.u.terre)),
+        Etape("17 avril 1970 : l'équipage d'Apollo 13 amerrit sain et sauf. On a appelé cette mission "
+              "« l'échec réussi »."),
+    ], conseil="largue Aquarius et le module de service avant l'atmosphère, puis ouvre le parachute "
+               "sous 250 m/s.", genre="mission", annee=1970),
+]
+
+for _m in MISSIONS:
+    PAR_ID[_m.ident] = _m

@@ -1,0 +1,2 @@
+# Pour jouer et lancer les tests sur PC (Python 3.10 ou plus récent).
+pygame>=2.1
