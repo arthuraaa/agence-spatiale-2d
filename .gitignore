@@ -13,6 +13,7 @@ cache_musique/
 .buildozer/
 .venv-android/
 bin/
+build.log
 outils/apk_rapide/cache/
 
 # Clés de signature : JAMAIS dans le dépôt (sauf la clé de TEST de l'APK rapide)

@@ -1,0 +1,59 @@
+# Construction Android sur les machines de GitHub Actions (aucune installation en local).
+# À lancer depuis https://github.com/<ton-compte>/agence-spatiale-2d/actions :
+# bouton « Run workflow ». L'APK apparaît ensuite en bas de la page du lancement,
+# dans « Artifacts » (il faut être connecté pour le télécharger).
+#
+# Le premier lancement dure 30 à 60 minutes (téléchargement du SDK et du NDK, compilation
+# de Python et SDL). Les fois suivantes, le cache rend le tout beaucoup plus rapide.
+
+name: Construire Android
+
+on:
+  workflow_dispatch:        # lancement à la main, depuis l'onglet Actions
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest  # Linux, comme pour une construction locale avec buildozer
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      # Le jeu tourne avec Python 3.11 sur Android (python-for-android) ; on utilise
+      # la même version ici, ne serait-ce que pour les tests.
+      - name: Installer Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installer Java 17 (requis par le SDK Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Le SDK/NDK Android et les bibliothèques compilées restent en cache d'un
+      # lancement à l'autre. La clé dépend de buildozer.spec : changer une exigence
+      # (android.ndk, requirements…) reconstruit tout, sinon on réutilise l'ancien cache.
+      - name: Cache de construction
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            ~/.android
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-
+
+      - name: Installer buildozer
+        run: pip install -r requirements-build.txt
+
+      - name: Construire l'APK de test
+        run: buildozer android debug
+
+      - name: Contrôle du paquet pour Google Play
+        run: python outils/verifier_paquet.py bin/*.apk || true
+
+      - name: Publier l'APK en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agence-spatiale-apk
+          path: bin/*.apk
