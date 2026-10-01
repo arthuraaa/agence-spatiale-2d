@@ -1,4 +1,9 @@
-# Pour construire l'APK / l'AAB Android (Ubuntu ou autre Linux) : installé par outils/android/preparer.sh.
-buildozer>=1.5
-cython>=3.0,<3.2
+# Pour construire l'APK / l'AAB Android (Ubuntu ou autre Linux, ou la CI) :
+# installé par outils/android/preparer.sh.
+#
+# buildozer 1.6 minimum : la 1.5 échappe les guillemets d'android.extra_manifest_
+# application_arguments et Gradle refuse le AndroidManifest.xml généré (bug p4a #2905).
+# Elle exige aussi cython<3.0 : ne pas re-épingler cython>=3.0 ici, sinon pip
+# rétrograde buildozer en 1.5 !
+buildozer>=1.6
 setuptools
