@@ -52,6 +52,13 @@ else:
 '''
     fichier.write_text(texte.replace(marque, contournement + marque, 1))
     print("Contournement du bug #2905 installé :", fichier)
+    # Les dists déjà générées contiennent un manifeste rendu avec l'ancien
+    # gabarit : p4a ne les re-rend pas, il faut les supprimer.
+    import glob
+    import shutil
+    for dist in glob.glob(str(fichier.parents[5] / "build-*" / "dists")):
+        print("Dist obsolète supprimée :", dist)
+        shutil.rmtree(dist, ignore_errors=True)
 EOF
 
 # Vérification rapide : la correction doit décoder l'exemple du bug.
