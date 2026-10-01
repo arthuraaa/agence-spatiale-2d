@@ -18,9 +18,10 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 - Chaque bug corrigé s'accompagne d'un test qui l'aurait attrapé.
 - Mets à jour `README.md`, et ce fichier si l'architecture ou les commandes changent.
 - Jamais de clé de signature (`*.jks`) ni de mot de passe dans le dépôt.
-- Arthur travaille sous **Ubuntu** et **n'utilise pas GitHub** (ni Actions, ni Pages) : tout
-  se construit en local avec `outils/android/`, et git ne sert qu'en local. Ne propose pas
-  GitHub, ni de solution propre à Windows.
+- Arthur travaille sous **Ubuntu**. Il n'a pas la place de construire l'APK en local
+  (disque plein) : l'APK de test se construit sur **GitHub Actions** (`.github/workflows/
+  android.yml`, lancé à la main, artefact à télécharger). git pousse vers GitHub pour cela ;
+  ne propose pas de solution propre à Windows.
 - Ne casse pas les sauvegardes existantes (`jeu/sauvegarde.py`) : un nouveau champ se lit
   avec une valeur par défaut (`d.get("champ", défaut)`).
 - Pour « voir » l'écran : capture sans fenêtre (`SDL_VIDEODRIVER=dummy`, puis
@@ -37,7 +38,8 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 | Tous les tests | `python tests/tout.py` (`--rapide` : sans les plus longs) |
 | Un fichier de tests | `python tests/test_boosters.py` (ou `python tests/tout.py boost`) |
 | Préparer Ubuntu (une fois) | `bash outils/android/preparer.sh` |
-| APK de test | `bash outils/android/construire.sh debug` → `bin/*.apk` |
+| APK de test (GitHub Actions, sans installation locale) | pousser, puis « Run workflow » sur github.com → onglet Actions → artefact `agence-spatiale-apk` |
+| APK de test en local | `bash outils/android/construire.sh debug` → `bin/*.apk` |
 | Installer et lancer sur le téléphone (USB), avec le journal | `bash outils/android/construire.sh deploy` |
 | Journal d'un plantage sur le téléphone | `adb logcat -s python:D SDL:D` (et `erreur.txt` du jeu) |
 | AAB signé pour Google Play | `bash outils/android/construire.sh release` → `bin/*.aab` |
