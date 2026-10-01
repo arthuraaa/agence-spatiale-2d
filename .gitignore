@@ -16,6 +16,9 @@ bin/
 build.log
 outils/apk_rapide/cache/
 
+# Graphe de connaissances graphify (généré)
+graphify-out/
+
 # Clés de signature : JAMAIS dans le dépôt (sauf la clé de TEST de l'APK rapide)
 *.jks
 *.keystore
