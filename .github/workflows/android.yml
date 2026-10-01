@@ -78,11 +78,39 @@ jobs:
             exit 1
           }
 
+      # La clé d'envoi ne vit jamais dans le dépôt : elle arrive décodée d'un
+      # secret GitHub (AGENCY_CLE_B64) et le mot de passe d'un autre (AGENCY_MDP).
+      - name: Préparer la clé d'envoi (depuis les secrets)
+        env:
+          CLE_B64: ${{ secrets.AGENCY_CLE_B64 }}
+        run: |
+          mkdir -p ~/.agence-spatiale && chmod 700 ~/.agence-spatiale
+          echo "$CLE_B64" | base64 -d > ~/.agence-spatiale/cle-envoi.jks
+
+      # P4A_RELEASE_* : variables lues par python-for-android pour signer l'AAB
+      # (alias « envoi », mot de passe identique au magasin de clés).
+      - name: Construire l'AAB signé pour Google Play
+        env:
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.AGENCY_MDP }}
+          P4A_RELEASE_KEYALIAS: envoi
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.AGENCY_MDP }}
+        run: |
+          export P4A_RELEASE_KEYSTORE="$HOME/.agence-spatiale/cle-envoi.jks"
+          buildozer android release
+
       - name: Contrôle du paquet pour Google Play
-        run: python outils/verifier_paquet.py bin/*.apk || true
+        run: |
+          python outils/verifier_paquet.py bin/*.apk || true
+          python outils/verifier_paquet.py bin/*.aab || true
 
       - name: Publier l'APK en artefact
         uses: actions/upload-artifact@v4
         with:
           name: agence-spatiale-apk
           path: bin/*.apk
+
+      - name: Publier l'AAB en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agence-spatiale-aab
+          path: bin/*.aab

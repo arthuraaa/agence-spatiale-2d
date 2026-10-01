@@ -38,7 +38,7 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 | Tous les tests | `python tests/tout.py` (`--rapide` : sans les plus longs) |
 | Un fichier de tests | `python tests/test_boosters.py` (ou `python tests/tout.py boost`) |
 | Préparer Ubuntu (une fois) | `bash outils/android/preparer.sh` |
-| APK de test (GitHub Actions, sans installation locale) | pousser, puis « Run workflow » sur github.com → onglet Actions → artefact `agence-spatiale-apk` |
+| APK de test (GitHub Actions, sans installation locale) | pousser, puis « Run workflow » sur github.com → onglet Actions → artefacts `agence-spatiale-apk` et `agence-spatiale-aab` |
 | APK de test en local | `bash outils/android/construire.sh debug` → `bin/*.apk` |
 | Installer et lancer sur le téléphone (USB), avec le journal | `bash outils/android/construire.sh deploy` |
 | Journal d'un plantage sur le téléphone | `adb logcat -s python:D SDL:D` (et `erreur.txt` du jeu) |
@@ -105,24 +105,23 @@ buildozer.spec          construction Android      outils/android/  préparer, co
 16 Ko), AAB en publication, arm64-v8a + armeabi-v7a, version lue dans `jeu/version.py`,
 versionCode = `android.numeric_version` (= `VERSION_CODE`, vérifié par `tests/test_version.py`).
 
-**Important : cette construction n'a encore jamais abouti.** Elle a été préparée dans un
-environnement sans accès au SDK Android : `preparer.sh` s'y exécute, buildozer lit le spec et
-récupère python-for-android, puis s'arrête faute de pouvoir télécharger Apache Ant et le SDK.
-Première tâche (sous Ubuntu) : `bash outils/android/preparer.sh`, puis
-`bash outils/android/construire.sh debug` (qui passe `outils/verifier_paquet.py` sur le
-résultat), puis essayer l'APK sur un vrai téléphone. Pistes si elle échoue :
+**La construction aboutit** (v1.6.0 testée sur téléphone, Pixel 9 Pro XL). Elle se fait sur
+**GitHub Actions** (`.github/workflows/android.yml`, à la main depuis l'onglet Actions) :
+l'APK de test et l'AAB signé sortent en artefacts. La clé d'envoi ne vit jamais dans le
+dépôt : elle passe par les secrets GitHub `AGENCY_CLE_B64` (clé en base64) et `AGENCY_MDP`.
+En local, `bash outils/android/construire.sh debug|release` marche aussi (disque plein :
+préférer la CI). Pistes en cas d'échec :
 
 1. Lire la **fin** du journal : c'est en général une recette python-for-android qui échoue.
-2. Essayer `p4a.branch = develop` dans `buildozer.spec` (la dernière version publiée de
-   python-for-android peut être en retard sur le NDK r28c).
-3. Recette `pygame` qui ne compile pas : chercher dans les issues de
-   kivy/python-for-android ; en dernier recours, une recette locale (`p4a.local_recipes`).
-4. Erreur Cython : essayer une autre version dans `requirements-build.txt`.
-5. Construction abîmée : `buildozer android clean` (ou supprimer `.buildozer/`), puis relancer.
-6. buildozer 1.5.0 (PyPI) prend python-for-android sur sa branche `master` : si une
-   correction récente manque, `p4a.branch = develop`.
-
-Arthur est sous Ubuntu : buildozer, adb et l'USB y fonctionnent directement.
+2. Recette `pygame` qui ne compile pas : voir `outils/android/recettes_locales/LISEZMOI.md`
+   (recettes locales Python 3.11.9 + pygame 2.1.3 avec `simd_blitters_*.c` en plus).
+3. Erreur Cython / manifeste refusé par Gradle : voir `requirements-build.txt`
+   (buildozer ≥ 1.6 obligatoire, ne pas re-épingler cython) et `corriger_p4a.sh`
+   (contournement du bug p4a #2905).
+4. La CI force la recompilation de pygame à chaque build (étape « Forcer la
+   recompilation de pygame ») : à retirer quand la recette est stable.
+5. Construction abîmée : changer la clé de cache du workflow (un commentaire dans
+   `buildozer.spec` suffit) pour repartir d'un cache vierge.
 L'**APK rapide** (`outils/apk_rapide/`) sert seulement aux tests : il réutilise le moteur
 compilé d'un APK « donneur » (ancien, non aligné sur 16 Ko) et `verifier_paquet.py` le refuse.
 
