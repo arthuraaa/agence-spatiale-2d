@@ -61,6 +61,15 @@ jobs:
       - name: Corriger python-for-android (bug #2905)
         run: bash outils/android/corriger_p4a.sh
 
+      # La recette pygame locale ayant changé (simd_blitters_sse2.c, crash au
+      # démarrage sur ARM64), on force sa recompilation : le cache contient déjà
+      # l'ancienne version et p4a ne détecte pas le changement. À retirer quand
+      # la correction est stable pour profiter du cache complet.
+      - name: Forcer la recompilation de pygame
+        run: |
+          rm -rf ~/.buildozer/android/platform/build-*/build/other_builds/pygame* \
+                 ~/.buildozer/android/platform/build-*/dists
+
       - name: Construire l'APK de test
         run: |
           buildozer android debug || {

@@ -21,7 +21,13 @@ compilant `src_c/_sdl2/sdl2.c`). Le jeu, lui, vise Python 3.11 + pygame 2.1.x
   compilent contre Python 3.11 ; en 2.1.0, `src_c/_sdl2/sdl2.c` inclut
   `longintrepr.h`, retiré des en-têtes publics en 3.11), et archive prise sur
   **PyPI** (avec les .c pré-générés) plutôt que le dépôt GitHub (qui repart des
-  .pyx et les régénère avec le vieux Cython de p4a).
+  .pyx et les régénère avec le vieux Cython de p4a). En plus, le gabarit
+  `Setup.Android.SDL2.in` est complété : pygame 2.1.3 a introduit les blits SIMD
+  (`alphablit_alpha_sse2_*`) dont `alphablit.c` dépend, mais le Setup Android
+  n'ajoute pas `simd_blitters_sse2.c` au module `surface` — sans lui, l'APK se
+  ferme au démarrage (« dlopen failed: cannot locate symbol
+  alphablit_alpha_sse2_argb_surf_alpha » ; le fichier compile en NEON sur ARM
+  grâce à `sse2neon.h`).
 - Les patchs nécessaires pour 3.11 sont copiés à côté (tous testés avec
   `patch --dry-run` sur les sources CPython 3.11.9) :
   - `python3/patches/pyconfig_detection.patch`, `reproducible-buildinfo.diff`

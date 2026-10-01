@@ -53,7 +53,8 @@ android.logcat_filters = *:S python:D SDL:D
 p4a.bootstrap = sdl2
 # Recettes locales : épingle Python 3.11 (la recette pygame de p4a, figée sur 2.1.0,
 # ne compile pas contre le Python 3.14 des recettes officielles) — voir
-# outils/android/recettes_locales/LISEZMOI.md
+# outils/android/recettes_locales/LISEZMOI.md ; la recette pygame locale (2.1.3)
+# ajoute simd_blitters_sse2.c au Setup Android (sinon crash au démarrage sur ARM64)
 p4a.local_recipes = outils/android/recettes_locales
 # Si une recette refuse de compiler avec le NDK r28c, essayer la branche de développement :
 # p4a.branch = develop

@@ -32,6 +32,15 @@ class Pygame2Recipe(CompiledComponentsPythonRecipe):
         super().prebuild_arch(arch)
         with current_directory(self.get_build_dir(arch.arch)):
             setup_template = open(join("buildconfig", "Setup.Android.SDL2.in")).read()
+            # pygame 2.1.3 : le module surface appelle les blits SIMD
+            # (alphablit_alpha_sse2_*) définis dans simd_blitters_sse2.c, absent
+            # du Setup Android d'origine → « dlopen failed: cannot locate symbol
+            # alphablit_alpha_sse2_argb_surf_alpha » au lancement sur ARM64.
+            # Ce fichier compile en NEON sur ARM (sse2neon.h) : on l'ajoute.
+            setup_template = setup_template.replace(
+                "surface src_c/surface.c src_c/alphablit.c src_c/surface_fill.c",
+                "surface src_c/surface.c src_c/alphablit.c src_c/surface_fill.c"
+                " src_c/simd_blitters_sse2.c")
             env = self.get_recipe_env(arch)
             env['ANDROID_ROOT'] = join(self.ctx.ndk.sysroot, 'usr')
 
