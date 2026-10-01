@@ -56,7 +56,12 @@ jobs:
             libffi-dev m4 pkg-config zip unzip
 
       - name: Construire l'APK de test
-        run: buildozer android debug
+        run: |
+          buildozer android debug || {
+            echo "== Échec : voici le AndroidManifest.xml généré, pour le diagnostic =="
+            cat .buildozer/android/platform/build-*/dists/*/src/main/AndroidManifest.xml || true
+            exit 1
+          }
 
       - name: Contrôle du paquet pour Google Play
         run: python outils/verifier_paquet.py bin/*.apk || true
