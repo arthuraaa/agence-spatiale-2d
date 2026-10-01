@@ -16,6 +16,10 @@ fi
 # shellcheck disable=SC1091
 source .venv-android/bin/activate
 
+# Contourne le bug p4a #2905 (manifeste généré avec des guillemets échappés) :
+# à lancer avant chaque construction, sans effet si déjà fait.
+bash outils/android/corriger_p4a.sh
+
 case "$MODE" in
 debug)
     buildozer android debug

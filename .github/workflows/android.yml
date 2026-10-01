@@ -55,6 +55,12 @@ jobs:
           sudo apt-get install -y autoconf automake libtool libtool-bin libltdl-dev \
             libffi-dev m4 pkg-config zip unzip
 
+      # Contourne le bug p4a #2905 : sans lui, les attributs du manifeste
+      # (android.extra_manifest_application_arguments) arrivent échappés et
+      # Gradle refuse le AndroidManifest.xml généré. Clone p4a si besoin.
+      - name: Corriger python-for-android (bug #2905)
+        run: bash outils/android/corriger_p4a.sh
+
       - name: Construire l'APK de test
         run: |
           buildozer android debug || {
