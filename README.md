@@ -414,7 +414,11 @@ l'interface tactile au hasard sur trois formats d'écran (20:9, 16:9, 4:3) ;
 `tests/captures.py` enregistre des captures d'écran sans ouvrir de fenêtre.
 `tests/test_attributs.py` vérifie que chaque `module.attribut` écrit dans le code existe
 vraiment (avec le Python et le pygame de l'APK, c'est ce qui manquait pour éviter le plantage
-de la version 1.3 au passage en arrière-plan).
+de la version 1.3 au passage en arrière-plan). `tests/test_vendabilite.py` vérifie tout ce qui
+rend le jeu publiable et désirable : limites de la fiche Play Store (FR et EN), dimensions et
+poids des visuels, lisibilité de l'icône réduite à 48 px, cohérence des couleurs icône /
+bannière / captures, identifiant Android (aucune permission, AAB), état de la traduction
+anglaise et politique de confidentialité.
 
 ## Idées pour la suite
 
