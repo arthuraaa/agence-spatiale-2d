@@ -51,6 +51,10 @@ android.allow_backup = True
 android.extra_manifest_application_arguments = ./android/manifeste_application.xml
 android.logcat_filters = *:S python:D SDL:D
 p4a.bootstrap = sdl2
+# Recettes locales : épingle Python 3.11 (la recette pygame de p4a, figée sur 2.1.0,
+# ne compile pas contre le Python 3.14 des recettes officielles) — voir
+# outils/android/recettes_locales/LISEZMOI.md
+p4a.local_recipes = outils/android/recettes_locales
 # Si une recette refuse de compiler avec le NDK r28c, essayer la branche de développement :
 # p4a.branch = develop
 
