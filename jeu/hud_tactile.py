@@ -22,6 +22,7 @@ from . import pilote as mod_pilote
 from . import reglages
 from .interface import texte, panneau, Bouton, fmt_distance, fmt_vitesse, fmt_date, fmt_nombre
 from .missions import mission_suggeree
+from .textes import t
 from .plateforme import MARGE_BORD as MX
 from .vaisseau import indice_decoupleur_bas, statistiques_etages
 
@@ -37,7 +38,7 @@ SAS = [("off", "OFF"), ("stab", "STAB"), ("pro", "PRO"), ("retro", "RÉTRO"), ("
 # croix de translation RCS : (commande, colonne, ligne, symbole) ; avant = vers le nez du vaisseau
 CROIX_RCS = [(("rcs", 1, 0), 0, -1, "▲"), (("rcs", -1, 0), 0, 1, "▼"),
              (("rcs", 0, -1), -1, 0, "◀"), (("rcs", 0, 1), 1, 0, "▶")]
-LIBELLES_REF = {"surface": "Surf.", "orbite": "Orb.", "cible": "Cible"}
+LIBELLES_REF = {"surface": "Surf.", "orbite": "Orb.", "cible": "Cible"}   # clés -> textes
 LIBELLES_CAM = {"auto": "Auto", "horizon": "Horiz.", "nord": "Nord"}
 
 
@@ -84,7 +85,7 @@ class HudTactile(Hud):
             b.append(Bouton((l - MX - 118, M, 56, 44), "◎", sc.recentrer, 24))
             x_pilote -= 62
         if reglages.AIDES and a is not None:                 # pilote automatique
-            b.append(Bouton((x_pilote - 96, M, 96, 44), "Pilote", self.basculer_menu_pilote, 16,
+            b.append(Bouton((x_pilote - 96, M, 96, 44), t("Pilote"), self.basculer_menu_pilote, 16,
                             allume=u.pilote is not None or self.menu_pilote))
             self.ancre_pilote = (x_pilote, M)
         self.cadran = None
@@ -98,23 +99,23 @@ class HudTactile(Hud):
         maintenus.append((pygame.Rect(x0 + 98, y, 92, 84), ("rot", -1), "⟳"))
         y -= 8 + 56
         if indice_decoupleur_bas(a.pieces):          # la place reste réservée : rien ne bouge
-            b.append(Bouton((x0, y, L_COLONNE, 56), "ÉTAGE", u.separer_etage, 20))
+            b.append(Bouton((x0, y, L_COLONNE, 56), t("ÉTAGE"), u.separer_etage, 20))
         contexte = []
         if u.peut_recuperer(a):
-            contexte.append(("Récupérer", sc.recuperer))
+            contexte.append((t("Récupérer"), sc.recuperer))
         if a.jonctions():
-            contexte.append(("Désamarrer", u.desamarrer))
-            contexte.append(("Carburant", lambda: sc.ouvrir("carburant")))
+            contexte.append((t("Désamarrer"), u.desamarrer))
+            contexte.append((t("Carburant"), lambda: sc.ouvrir("carburant")))
         if any(p.parachute == "plie" for p in a.pieces) and a.corps.atm_h > 0 and a.mode != "pose":
-            contexte.append(("Parachute", u.ouvrir_parachute))
+            contexte.append((t("Parachute"), u.ouvrir_parachute))
         for lib, act in contexte:
             y -= 6 + 44
             b.append(Bouton((x0, y, L_COLONNE, 44), lib, act, 17))
         y -= 8 + 40
-        for k, (lib, act, allume) in enumerate((("RCS", sc.basculer_rcs, a.rcs),
-                                                (LIBELLES_REF.get(a.ref_vitesse, "Vit."),
+        for k, (lib, act, allume) in enumerate(((t("RCS"), sc.basculer_rcs, a.rcs),
+                                                (t(LIBELLES_REF.get(a.ref_vitesse, "Vit.")),
                                                  sc.changer_reference, False),
-                                                (LIBELLES_CAM[sc.cam.mode], sc.changer_camera, False))):
+                                                (t(LIBELLES_CAM[sc.cam.mode]), sc.changer_camera, False))):
             b.append(Bouton((x0 + k * 65, y, 60, 40), lib, act, 14, allume=allume))
         # ---- manette des gaz, à gauche sous le panneau de vol
         self.rect_gaz = pygame.Rect(MX, M + H_INFOS + 12, L_GAZ, h - 2 * M - H_INFOS - 12)
@@ -155,9 +156,9 @@ class HudTactile(Hud):
         if self.noeud_visible:
             nx, ny, haut, _ = self._geometrie_noeud(u, a, l)
             xb, yb = nx + 8, ny + haut - 50
-            for larg_b, lib, act in ((54, "− tour", lambda: u.decaler_noeud(-1)),
-                                     (54, "+ tour", lambda: u.decaler_noeud(+1)),
-                                     (64, "Exécuter" if reglages.AIDES else "Filer",
+            for larg_b, lib, act in ((54, t("− tour"), lambda: u.decaler_noeud(-1)),
+                                     (54, t("+ tour"), lambda: u.decaler_noeud(+1)),
+                                     (64, t("Exécuter") if reglages.AIDES else t("Filer"),
                                       (lambda: u.lancer_pilote(mod_pilote.ExecuterNoeud()))
                                       if reglages.AIDES else u.filer_au_noeud),
                                      (44, "✕", u.supprimer_noeud)):
@@ -168,12 +169,12 @@ class HudTactile(Hud):
     def _geometrie_noeud(self, u, a, l):
         """Position, hauteur et lignes du panneau de manœuvre (à droite de la manette)."""
         lignes, _ = infos_noeud(u, a)
-        longue = any(nom == "Combustion longue" for nom, _, _ in lignes)
+        longue = any(nom == t("Combustion longue") for nom, _, _ in lignes)
         propres = []
         for nom, val, coul in lignes:
-            if nom in ("Nœud", "Combustion longue"):
+            if nom in (t("Nœud"), t("Combustion longue")):
                 continue
-            if nom == "Combustion" and longue:
+            if nom == t("Combustion") and longue:
                 coul = ORANGE                              # combustion longue : valeur en orange
             propres.append((nom.strip(), val, coul))
         propres = propres[:8 if l >= 900 else 5]
@@ -196,13 +197,13 @@ class HudTactile(Hud):
                 self._cadran(surf, u, cam, a, self.cadran[0], self.cadran[1], R=R_CADRAN, legende=False)
         m = None if u.tutoriel else mission_suggeree(u)       # pas d'objectif pendant un tutoriel
         if m is not None:
-            texte(surf, "Objectif : " + m.titre, (l // 2, M + 50), 13, JAUNE, ancre="hc")
+            texte(surf, t("Objectif : ") + t(m.titre), (l // 2, M + 50), 13, JAUNE, ancre="hc")
         self._messages(surf, u, l, y0=M + 70 + self.decalage_tuto(), taille=15, pas=20,
                        largeur=max(300, l - 2 * (MX + L_PANNEAU + 16)))
         lignes = lignes_cible(u, a)[:8]
         amarrage = lignes_amarrage(u, a) if reglages.AIDES and lignes else None
         if amarrage:            # docking : dans le panneau de la cible (la croix RCS occupe la gauche)
-            lignes = lignes[:6] + [("Au port" if n.startswith("Distance") else n, t, c) for n, t, c in amarrage
+            lignes = lignes[:6] + [(t("Au port") if n.startswith("Distance") else n, v, c) for n, v, c in amarrage
                                    if n in ("Distance au port", "Écart latéral", "Alignement")]
         if lignes:
             x = l - MX - L_PANNEAU
@@ -237,14 +238,14 @@ class HudTactile(Hud):
         rvx, rvy = u.vitesse_reference(a)
         o = a.orbite if a.mode != "pose" else None
         valide = o is not None and not o.degeneree
-        lignes = [("Altitude", fmt_distance(r - c.R - a.geometrie().bas if a.mode != "pose" else 0.0)),
-                  ("Vit. %s" % a.ref_vitesse, fmt_vitesse(hypot(rvx, rvy))),
-                  ("Vit. verticale", fmt_vitesse(v_vert)),
-                  ("Apoapside", (fmt_distance(o.ra - c.R) if o.elliptique else "évasion") if valide else "—"),
-                  ("Périapside", fmt_distance(o.rp - c.R) if valide else "—")]
+        lignes = [(t("Altitude"), fmt_distance(r - c.R - a.geometrie().bas if a.mode != "pose" else 0.0)),
+                  (t("Vit. %s" % a.ref_vitesse), fmt_vitesse(hypot(rvx, rvy))),
+                  (t("Vit. verticale"), fmt_vitesse(v_vert)),
+                  (t("Apoapside"), (fmt_distance(o.ra - c.R) if o.elliptique else t("évasion")) if valide else "—"),
+                  (t("Périapside"), fmt_distance(o.rp - c.R) if valide else "—")]
         panneau(surf, (MX, M, L_PANNEAU, H_INFOS))
         texte(surf, a.nom, (MX + 10, M + 6), 17, BLANC, gras=True)
-        texte(surf, "%s · %s" % (c.nom, u.situation(a)), (MX + 10, M + 29), 13, CYAN)
+        texte(surf, "%s · %s" % (t(c.nom), u.situation(a)), (MX + 10, M + 29), 13, CYAN)
         yy = M + 50
         for nom, val in lignes:
             texte(surf, nom, (MX + 10, yy), 15, GRIS)
@@ -257,7 +258,7 @@ class HudTactile(Hud):
         if cap > 0:
             pygame.draw.rect(surf, VERT, (MX + 11, M + 161, int((L_PANNEAU - 22) * carb / cap), 6))
         etages = statistiques_etages(a.pieces)
-        texte(surf, "Δv étage %s m/s" % (fmt_nombre(etages[0]["dv"]) if etages else "0"),
+        texte(surf, t("Δv étage {dv} m/s", dv=fmt_nombre(etages[0]["dv"]) if etages else "0"),
               (MX + 10, M + 172), 13, BLANC)
 
     def _gaz(self, surf, a):
@@ -276,7 +277,7 @@ class HudTactile(Hud):
             pygame.draw.line(surf, GRIS_FONCE, (interieur.x - 6, yy), (interieur.x, yy))
         yy = interieur.bottom - hauteur
         pygame.draw.line(surf, BLANC, (r.x + 4, yy), (r.right - 4, yy), 3)
-        texte(surf, "GAZ", (r.centerx, r.y + 7), 12, GRIS, ancre="hc")
+        texte(surf, t("GAZ"), (r.centerx, r.y + 7), 12, GRIS, ancre="hc")
         texte(surf, "%d %%" % round(100 * a.gaz), (r.centerx, r.y + 23), 14,
               ORANGE if a.gaz > 0 else GRIS, gras=True, ancre="hc")
 
@@ -290,8 +291,8 @@ class HudTactile(Hud):
     def _noeud_tactile(self, surf, u, a, l):
         x, y, haut, lignes = self._geometrie_noeud(u, a, l)
         panneau(surf, (x, y, L_PANNEAU, haut))
-        texte(surf, "MANŒUVRE", (x + 10, y + 8), 15, BLEU_PLAN, gras=True)
-        texte(surf, "glisse une poignée, ou tape-la : 1 m/s", (x + 10, y + 28), 11, GRIS)
+        texte(surf, t("MANŒUVRE"), (x + 10, y + 8), 15, BLEU_PLAN, gras=True)
+        texte(surf, t("glisse une poignée, ou tape-la : 1 m/s"), (x + 10, y + 28), 11, GRIS)
         yy = y + 46
         for nom, val, coul in lignes:
             texte(surf, nom, (x + 10, yy), 14, GRIS)

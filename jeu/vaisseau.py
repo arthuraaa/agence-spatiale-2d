@@ -20,6 +20,7 @@ from math import log, pi, cos, sin
 from collections import Counter
 from .constantes import G0
 from .pieces import Piece, CATALOGUE
+from .textes import t
 
 
 # --------------------------------------------------------------------------
@@ -180,9 +181,9 @@ def statistiques_etages(pieces):
                 if debit_c > 0.0:
                     duree = min(duree, carb_c / debit_c)
             brule = debit * duree
-            nom = "%d boosters" % (2 * len(porteurs))
+            nom = t("{n} boosters", n=2 * len(porteurs))
             etage = {"debut": len(pieces), "fin": len(pieces), "boosters": True, "masse": m0,
-                     "moteur": (pieces[i].m.nom + " + " + nom) if i is not None else nom,
+                     "moteur": (t(pieces[i].m.nom) + " + " + nom) if i is not None else nom,
                      "dv": 0.0, "dv_sol": 0.0, "twr": f_sol / (m0 * 9.81), "twr_vide": f_vide / (m0 * 9.81),
                      "duree": duree}
             if brule > 0.0 and m0 > brule:
@@ -585,7 +586,8 @@ def nom_section(pieces):
     nom = proprio.most_common(1)[0][0] if proprio else ""
     chef = next((p for p in pieces if p.m.commande), None) or \
         max(pieces, key=lambda p: p.m.carburant + p.m.mono)
-    return ("%s : %s" % (nom, chef.m.nom)) if nom else chef.m.nom
+    return (t("{nom} : {chef}", nom=nom, chef=t(chef.m.nom)) if nom
+            else t(chef.m.nom))
 
 
 def inverser(pieces):

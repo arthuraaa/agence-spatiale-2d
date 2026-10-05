@@ -2,6 +2,7 @@
 """Petite boîte à outils d'interface : texte, panneaux, boutons, formats de nombres."""
 import os
 import pygame
+from .textes import t
 from .constantes import BLANC, GRIS, GRIS_FONCE, FOND_PANNEAU, BORD_PANNEAU, CYAN
 
 # Polices livrées avec le jeu : mêmes caractères partout (la police par défaut de pygame,
@@ -153,12 +154,12 @@ def fmt_duree(s):
     return "%d s" % s
 
 
-def fmt_date(t):
-    t = int(t)
-    j, s = divmod(t, 86400)
+def fmt_date(instant):
+    instant = int(instant)
+    j, s = divmod(instant, 86400)
     h, s = divmod(s, 3600)
     m, s = divmod(s, 60)
-    return "Jour %d  %02d:%02d:%02d" % (j + 1, h, m, s)
+    return t("Jour {j}  {h:02d}:{m:02d}:{s:02d}", j=j + 1, h=h, m=m, s=s)
 
 
 def fmt_masse(kg):

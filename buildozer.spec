@@ -41,7 +41,7 @@ android.ndk = 28c
 android.archs = arm64-v8a, armeabi-v7a
 android.accept_sdk_license = True
 # versionCode : doit augmenter à chaque envoi. Géré avec jeu/version.py par outils/nouvelle_version.py
-android.numeric_version = 12
+android.numeric_version = 13
 android.release_artifact = aab
 android.debug_artifact = apk
 # L'écran ne s'éteint pas pendant qu'on joue (les longues accélérations du temps).

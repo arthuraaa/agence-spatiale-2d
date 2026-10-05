@@ -16,55 +16,62 @@ from .interface import fmt_masse, texte, texte_multiligne, panneau, Bouton, fmt_
 from .missions import MISSIONS
 from .univers import REFERENCES
 from . import sauvegarde
+from .textes import t
 
-AIDE = [
-    ("PILOTAGE", [("← →  ou  Q D", "tourner"), ("↑ ↓  ou  Z S", "gaz + / -"),
-                  ("W / X", "plein gaz / couper"), ("ESPACE", "séparer l'étage"),
-                  ("T", "SAS marche / arrêt"), ("1 … 8", "SAS : stab, pro, rétro, rad+, rad-, cible, anti, manœuvre"),
-                  ("R  puis  I K J L", "RCS : translation (amarrage)"), ("P", "parachute"),
-                  ("U", "désamarrer"), ("V", "référence de vitesse")]),
-    ("MANŒUVRES", [("A  ou  clic sur l'orbite", "poser un nœud de manœuvre"),
-                   ("Glisser une poignée", "régler le Δv (Maj : fin, Ctrl : rapide)"),
-                   ("Molette sur une poignée", "régler le Δv au m/s près"),
-                   ("Glisser le centre du nœud", "déplacer le nœud sur l'orbite"),
-                   ("8", "SAS : pointer la manœuvre"), ("Suppr", "effacer le nœud"),
-                   ("G", "pilote automatique (option « Aides »)")]),
-    ("VUE ET TEMPS", [("Molette / PgPréc PgSuiv", "zoom"), ("Clic sur un objet", "cibler, centrer, contrôler"),
-                      ("F", "recentrer sur le vaisseau"), ("C", "caméra : auto / horizon / nord"),
-                      (",  et  ;  (ou .)", "ralentir / accélérer le temps"), ("Entrée", "temps normal (x1)"),
-                      ("N", "vaisseau suivant"), ("Retour arrière", "effacer la cible"),
-                      ("M / H / Échap", "missions / aide / menu"), ("F5 / F9", "sauvegarder / charger")]),
-]
-CONSEILS = ("Se mettre en orbite : décolle plein gaz (W), penche doucement vers la DROITE à partir de "
-            "~300 m, sois à l'horizontale vers 6 km. Coupe (X) quand l'apoapside atteint ~12 km, laisse "
-            "monter, puis SAS « PRO » et plein gaz un peu avant l'apoapside jusqu'à ce que le périapside "
-            "dépasse 7 km.\n"
-            "Manœuvre : pose un nœud (A), tire la poignée verte pour accélérer, la bleue vers le haut "
-            "pour lever l'orbite ; la trajectoire bleue montre le résultat. Puis SAS « MAN » (8), "
-            "« Filer » pour avancer le temps, et plein gaz quand le compte à rebours d'allumage arrive à 0.")
+def aide():
+    """Lignes de l'aide clavier, dans la langue active."""
+    return [
+        (t("PILOTAGE"), [(t("← →  ou  Q D"), t("tourner")), (t("↑ ↓  ou  Z S"), t("gaz + / -")),
+                         (t("W / X"), t("plein gaz / couper")), (t("ESPACE"), t("séparer l'étage")),
+                         (t("T"), t("SAS marche / arrêt")),
+                         (t("1 … 8"), t("SAS : stab, pro, rétro, rad+, rad-, cible, anti, manœuvre")),
+                         (t("R  puis  I K J L"), t("RCS : translation (amarrage)")), (t("P"), t("parachute")),
+                         (t("U"), t("désamarrer")), (t("V"), t("référence de vitesse"))]),
+        (t("MANŒUVRES"), [(t("A  ou  clic sur l'orbite"), t("poser un nœud de manœuvre")),
+                          (t("Glisser une poignée"), t("régler le Δv (Maj : fin, Ctrl : rapide)")),
+                          (t("Molette sur une poignée"), t("régler le Δv au m/s près")),
+                          (t("Glisser le centre du nœud"), t("déplacer le nœud sur l'orbite")),
+                          (t("8"), t("SAS : pointer la manœuvre")), (t("Suppr"), t("effacer le nœud")),
+                          (t("G"), t("pilote automatique (option « Aides »)"))]),
+        (t("VUE ET TEMPS"), [(t("Molette / PgPréc PgSuiv"), t("zoom")),
+                             (t("Clic sur un objet"), t("cibler, centrer, contrôler")),
+                             (t("F"), t("recentrer sur le vaisseau")),
+                             (t("C"), t("caméra : auto / horizon / nord")),
+                             (t(",  et  ;  (ou .)"), t("ralentir / accélérer le temps")),
+                             (t("Entrée"), t("temps normal (x1)")),
+                             (t("N"), t("vaisseau suivant")), (t("Retour arrière"), t("effacer la cible")),
+                             (t("M / H / Échap"), t("missions / aide / menu")),
+                             (t("F5 / F9"), t("sauvegarder / charger"))]),
+    ]
 
-AIDE_TACTILE = [
-    ("COMMANDES", [("Manette à gauche", "gaz : pose le doigt et glisse"),
-                   ("⟲  ⟳  (maintenir)", "tourner le vaisseau"),
-                   ("ÉTAGE", "larguer l'étage vide"),
-                   ("Boutons du bas", "SAS : stab, pro, rétro, radial..."),
-                   ("RCS  puis  ▲ ▼ ◀ ▶", "translation fine (amarrage)"),
-                   ("◀  x1  ▶", "temps (tape au centre = x1)"),
-                   ("Pilote", "orbite auto, exécuter, transfert (aides)"),
-                   ("☰", "menu : missions, sauvegarde...")]),
-    ("GESTES", [("Tape sur un objet", "cibler, centrer, contrôler"),
-                ("Tape sur l'orbite", "poser un nœud de manœuvre"),
-                ("Glisser une poignée", "régler le Δv du nœud"),
-                ("Tape sur une poignée", "± 1 m/s (réglage fin)"),
-                ("Glisser le centre du nœud", "le déplacer sur l'orbite"),
-                ("Deux doigts", "pincer pour zoomer"),
-                ("◎", "revenir au vaisseau")]),
-]
-CONSEILS_TACTILE = ("Orbite : gaz à fond, penche doucement à DROITE (⟳) vers 300 m, sois à l'horizontale "
-                    "vers 6 km, coupe les gaz quand l'apoapside atteint ~12 km. Un peu avant l'apoapside : "
-                    "SAS « PRO » et gaz à fond jusqu'à un périapside de 7 km.\n"
-                    "Manœuvre : tape sur ton orbite, tire la poignée verte, puis SAS « MAN », « Filer », et "
-                    "gaz à fond quand le compte à rebours d'allumage arrive à zéro.")
+
+def conseils():
+    return t("CONSEILS_ORBITE")
+
+
+def aide_tactile():
+    """Lignes de l'aide tactile, dans la langue active."""
+    return [
+        (t("COMMANDES"), [(t("Manette à gauche"), t("gaz : pose le doigt et glisse")),
+                          (t("⟲  ⟳  (maintenir)"), t("tourner le vaisseau")),
+                          (t("ÉTAGE"), t("larguer l'étage vide")),
+                          (t("Boutons du bas"), t("SAS : stab, pro, rétro, radial...")),
+                          (t("RCS  puis  ▲ ▼ ◀ ▶"), t("translation fine (amarrage)")),
+                          (t("◀  x1  ▶"), t("temps (tape au centre = x1)")),
+                          (t("Pilote"), t("orbite auto, exécuter, transfert (aides)")),
+                          (t("☰"), t("menu : missions, sauvegarde..."))]),
+        (t("GESTES"), [(t("Tape sur un objet"), t("cibler, centrer, contrôler")),
+                       (t("Tape sur l'orbite"), t("poser un nœud de manœuvre")),
+                       (t("Glisser une poignée"), t("régler le Δv du nœud")),
+                       (t("Tape sur une poignée"), t("± 1 m/s (réglage fin)")),
+                       (t("Glisser le centre du nœud"), t("le déplacer sur l'orbite")),
+                       (t("Deux doigts"), t("pincer pour zoomer")),
+                       (t("◎"), t("revenir au vaisseau"))]),
+    ]
+
+
+def conseils_tactile():
+    return t("CONSEILS_ORBITE_TACTILE")
 
 
 class SceneVol:
@@ -158,7 +165,7 @@ class SceneVol:
 
     def changer_son(self):
         reglages.changer_son()
-        self.u.dire("Son : %s" % reglages.NOMS_SON[reglages.SON], CYAN, 3)
+        self.u.dire(t("Son : {mode}", mode=t("son_" + reglages.SON)), CYAN, 3)
 
     def basculer_aides(self):
         reglages.basculer_aides()
@@ -193,10 +200,10 @@ class SceneVol:
     def temps_sur_trajectoire(self, pos):
         """Instant correspondant au point de la trajectoire le plus proche du pointeur."""
         meilleur, dmin = None, self.tolerance_clic * 1.5
-        for px, py, t in self.cam.echantillons:
+        for px, py, instant in self.cam.echantillons:
             d = hypot(px - pos[0], py - pos[1])
             if d < dmin:
-                dmin, meilleur = d, t
+                dmin, meilleur = d, instant
         return meilleur
 
     def noeud_par_defaut(self):
@@ -205,28 +212,28 @@ class SceneVol:
         if a is None:
             return
         if a.noeud is not None:
-            return u.dire("Il y a déjà un nœud de manœuvre (Suppr pour l'effacer)", ORANGE, 3)
+            return u.dire(t("Il y a déjà un nœud de manœuvre (Suppr pour l'effacer)"), ORANGE, 3)
         if a.mode == "pose" or not a.troncons:
-            return u.dire("Il faut être en vol pour planifier une manœuvre", ORANGE, 3)
+            return u.dire(t("Il faut être en vol pour planifier une manœuvre"), ORANGE, 3)
         tr = a.troncons[0]
-        t = u.t + 120.0
+        instant = u.t + 120.0
         if tr.orbite.elliptique:
             d = tr.orbite.delai_apoapside(u.t)
             if d is not None and u.t + d < tr.t1:
-                t = u.t + d
+                instant = u.t + d
         if tr.t1 < inf:
-            t = min(t, u.t + 0.9 * (tr.t1 - u.t))
-        u.placer_noeud(t)
-        u.dire("Nœud posé : tire les poignées pour régler le Δv", CYAN, 4)
+            instant = min(instant, u.t + 0.9 * (tr.t1 - u.t))
+        u.placer_noeud(instant)
+        u.dire(t("Nœud posé : tire les poignées pour régler le Δv"), CYAN, 4)
 
     def _glisser(self, pos):
         """Déplacement d'une poignée (ou du nœud lui-même) à la souris."""
         nom, (pro0, rad0), depart, direction = self.glisse
         u = self.u
         if nom == "centre":
-            t = self.temps_sur_trajectoire(pos)
-            if t is not None:
-                u.regler_noeud(t=t)
+            instant = self.temps_sur_trajectoire(pos)
+            if instant is not None:
+                u.regler_noeud(t=instant)
             return
         d = (pos[0] - depart[0]) * direction[0] + (pos[1] - depart[1]) * direction[1]
         k = d * NOEUD_SENSIBILITE * self._facteur_reglage()
@@ -262,13 +269,13 @@ class SceneVol:
 
     def sauvegarder(self):
         if self.u.tutoriel:
-            self.u.dire("Pas de sauvegarde pendant un tutoriel", ORANGE, 3)
+            self.u.dire(t("Pas de sauvegarde pendant un tutoriel"), ORANGE, 3)
             return
         try:
             sauvegarde.sauvegarder(self.u)
-            self.u.dire("Partie sauvegardée", VERT, 3)
+            self.u.dire(t("Partie sauvegardée"), VERT, 3)
         except OSError as e:
-            self.u.dire("Sauvegarde impossible : %s" % e, ROUGE)
+            self.u.dire(t("Sauvegarde impossible : {err}", err=e), ROUGE)
 
     # ------------------------------------------------------------- événements
     # ------------------------------------------------------ écran tactile
@@ -369,10 +376,10 @@ class SceneVol:
         if obj is not None:
             self.hud.ouvrir_popup(obj, pos)
         elif a is not None and a.noeud is None:
-            t = self.temps_sur_trajectoire(pos)
-            if t is not None:
-                u.placer_noeud(t)
-                u.dire("Nœud posé : tire les poignées pour régler le Δv", CYAN, 4)
+            instant = self.temps_sur_trajectoire(pos)
+            if instant is not None:
+                u.placer_noeud(instant)
+                u.dire(t("Nœud posé : tire les poignées pour régler le Δv"), CYAN, 4)
 
     # ------------------------------------------------------ clavier et souris
     def evenement(self, ev):
@@ -409,14 +416,14 @@ class SceneVol:
                     self.glisse = (p[0], (a.noeud.pro, a.noeud.rad), ev.pos, p[2])
                 return
             obj = objet_sous_souris(u, self.cam, ev.pos)
-            t = None
+            instant = None
             if obj is None and a is not None and a.noeud is None:
-                t = self.temps_sur_trajectoire(ev.pos)
+                instant = self.temps_sur_trajectoire(ev.pos)
             if obj is not None:
                 self.hud.ouvrir_popup(obj, ev.pos)
-            elif t is not None:                         # clic sur l'orbite : nouveau nœud
-                u.placer_noeud(t)
-                u.dire("Nœud posé : tire les poignées pour régler le Δv", CYAN, 4)
+            elif instant is not None:                   # clic sur l'orbite : nouveau nœud
+                u.placer_noeud(instant)
+                u.dire(t("Nœud posé : tire les poignées pour régler le Δv"), CYAN, 4)
             else:                                       # clic dans le vide : on fait glisser la vue
                 self.panoramique = ev.pos
         elif ev.type == pygame.KEYDOWN:
@@ -581,9 +588,9 @@ class SceneVol:
         larg, haut = 760, min(h - 40, 80 + 27 * len(MISSIONS))
         x, y = (l - larg) // 2, (h - haut) // 2
         panneau(surf, (x, y, larg, haut), alpha=240)
-        texte(surf, "MISSIONS", (x + 20, y + 14), 20, BLANC, gras=True)
-        texte(surf, "%d / %d accomplies" % (len(u.missions_faites), len(MISSIONS)), (x + larg - 20, y + 18),
-              14, GRIS, ancre="hd")
+        texte(surf, t("MISSIONS"), (x + 20, y + 14), 20, BLANC, gras=True)
+        texte(surf, t("{fait} / {total} accomplies", fait=len(u.missions_faites), total=len(MISSIONS)),
+              (x + larg - 20, y + 18), 14, GRIS, ancre="hd")
         yy = y + 50
         for m in MISSIONS:
             if yy > y + haut - 30:
@@ -593,12 +600,12 @@ class SceneVol:
                 pygame.draw.lines(surf, VERT, False, [(x + 22, yy + 10), (x + 27, yy + 15), (x + 36, yy + 4)], 2)
             else:
                 pygame.draw.circle(surf, GRIS, (x + 29, yy + 10), 2)
-            texte(surf, m.titre, (x + 44, yy), 15, VERT if fait else BLANC, gras=not fait)
-            texte(surf, m.description, (x + 230, yy + 1), 13, GRIS)
+            texte(surf, t(m.titre), (x + 44, yy), 15, VERT if fait else BLANC, gras=not fait)
+            texte(surf, t(m.description), (x + 230, yy + 1), 13, GRIS)
             if not u.bac_a_sable:
                 texte(surf, fmt_nombre(m.prime), (x + larg - 20, yy), 14, JAUNE, ancre="hd")
             yy += 27
-        self.boutons = [Bouton((x + larg - 130, y + haut - 38, 110, 28), "Fermer", lambda: self.ouvrir("missions"))]
+        self.boutons = [Bouton((x + larg - 130, y + haut - 38, 110, 28), t("Fermer"), lambda: self.ouvrir("missions"))]
 
     def _panneau_missions_2_colonnes(self, surf, l, h):
         """Liste des missions sur deux colonnes : titre, puis description en petit."""
@@ -606,9 +613,9 @@ class SceneVol:
         larg, haut = min(l - 20, 1100), h - 20
         x, y = (l - larg) // 2, 10
         panneau(surf, (x, y, larg, haut), alpha=245)
-        texte(surf, "MISSIONS", (x + 20, y + 12), 20, BLANC, gras=True)
-        texte(surf, "%d / %d accomplies" % (len(u.missions_faites), len(MISSIONS)), (x + 160, y + 17),
-              14, GRIS)
+        texte(surf, t("MISSIONS"), (x + 20, y + 12), 20, BLANC, gras=True)
+        texte(surf, t("{fait} / {total} accomplies", fait=len(u.missions_faites), total=len(MISSIONS)),
+              (x + 160, y + 17), 14, GRIS)
         moitie = (len(MISSIONS) + 1) // 2
         col_l = (larg - 40) // 2
         pas = (haut - 110) // moitie
@@ -620,12 +627,14 @@ class SceneVol:
                 pygame.draw.lines(surf, VERT, False, [(xx + 2, yy + 9), (xx + 7, yy + 14), (xx + 16, yy + 3)], 2)
             else:
                 pygame.draw.circle(surf, GRIS, (xx + 9, yy + 9), 2)
-            texte(surf, m.titre, (xx + 24, yy), 15, VERT if fait else BLANC, gras=not fait)
+            texte(surf, t(m.titre), (xx + 24, yy), 15, VERT if fait else BLANC, gras=not fait)
             if not u.bac_a_sable:
                 texte(surf, fmt_nombre(m.prime), (xx + col_l - 10, yy), 13, JAUNE, ancre="hd")
-            desc = m.description if len(m.description) <= 62 else m.description[:60] + "…"
+            desc = t(m.description)
+            if len(desc) > 62:
+                desc = desc[:60] + "…"
             texte(surf, desc, (xx + 24, yy + 18), 12, GRIS)
-        self.boutons = [Bouton((x + larg - 150, y + haut - 54, 130, 44), "Fermer",
+        self.boutons = [Bouton((x + larg - 150, y + haut - 54, 130, 44), t("Fermer"),
                                lambda: self.ouvrir("missions"), 17)]
 
     def _panneau_aide(self, surf, l, h):
@@ -634,8 +643,8 @@ class SceneVol:
         larg, haut = 860, 520
         x, y = (l - larg) // 2, (h - haut) // 2
         panneau(surf, (x, y, larg, haut), alpha=240)
-        texte(surf, "AIDE", (x + 20, y + 14), 20, BLANC, gras=True)
-        for col, (titre, lignes) in enumerate(AIDE):
+        texte(surf, t("AIDE"), (x + 20, y + 14), 20, BLANC, gras=True)
+        for col, (titre, lignes) in enumerate(aide()):
             xx, yy = x + 20 + col * 420, y + 52
             texte(surf, titre, (xx, yy), 14, CYAN, gras=True)
             yy += 26
@@ -643,18 +652,18 @@ class SceneVol:
                 texte(surf, touche, (xx, yy), 14, JAUNE)
                 texte(surf, role, (xx + 190, yy), 14, BLANC)
                 yy += 24
-        texte_multiligne(surf, CONSEILS, (x + 20, y + 350), larg - 40, 14, GRIS)
-        texte(surf, "Échelle 1/100 : vitesses et durées ÷ 10. Le temps accéléré (> x4) exige moteurs coupés, hors atmosphère.",
+        texte_multiligne(surf, conseils(), (x + 20, y + 350), larg - 40, 14, GRIS)
+        texte(surf, t("Échelle 1/100 : vitesses et durées ÷ 10. Le temps accéléré (> x4) exige moteurs coupés, hors atmosphère."),
               (x + 20, y + haut - 66), 13, ORANGE)
-        self.boutons = [Bouton((x + larg - 130, y + haut - 38, 110, 28), "Fermer", lambda: self.ouvrir("aide"))]
+        self.boutons = [Bouton((x + larg - 130, y + haut - 38, 110, 28), t("Fermer"), lambda: self.ouvrir("aide"))]
 
     def _panneau_aide_tactile(self, surf, l, h):
         larg, haut = min(l - 20, 1000), h - 20
         x, y = (l - larg) // 2, 10
         panneau(surf, (x, y, larg, haut), alpha=245)
-        texte(surf, "AIDE", (x + 20, y + 12), 20, BLANC, gras=True)
+        texte(surf, t("AIDE"), (x + 20, y + 12), 20, BLANC, gras=True)
         col_l = (larg - 40) // 2
-        for col, (titre, lignes) in enumerate(AIDE_TACTILE):
+        for col, (titre, lignes) in enumerate(aide_tactile()):
             xx, yy = x + 20 + col * (col_l + 10), y + 48
             texte(surf, titre, (xx, yy), 14, CYAN, gras=True)
             yy += 24
@@ -662,8 +671,8 @@ class SceneVol:
                 texte(surf, geste, (xx, yy), 14, JAUNE)
                 texte(surf, role, (xx, yy + 17), 13, BLANC)
                 yy += 40
-        texte_multiligne(surf, CONSEILS_TACTILE, (x + 20, y + haut - 128), larg - 190, 13, GRIS, interligne=2)
-        self.boutons = [Bouton((x + larg - 150, y + haut - 54, 130, 44), "Fermer",
+        texte_multiligne(surf, conseils_tactile(), (x + 20, y + haut - 128), larg - 190, 13, GRIS, interligne=2)
+        self.boutons = [Bouton((x + larg - 150, y + haut - 54, 130, 44), t("Fermer"),
                                lambda: self.ouvrir("aide"), 17)]
 
     def _menu_boutons(self, surf, titre, sous_titre, entrees, l, h, couleur=BLANC):
@@ -695,7 +704,7 @@ class SceneVol:
         app, u = self.app, self.u
         nouveau = app.historique.revenir(u)
         if nouveau is None:
-            u.dire("Rien à rembobiner pour l'instant", ORANGE, 3)
+            u.dire(t("Rien à rembobiner pour l'instant"), ORANGE, 3)
             return
         recul = u.t - nouveau.t
         nouveau.tutoriel = getattr(u, "tutoriel", None)
@@ -703,69 +712,70 @@ class SceneVol:
         if app.tuto is not None:
             app.tuto.echec = False                  # le crash n'a jamais eu lieu
         app.aller_vol()
-        nouveau.dire("Retour de %d s en arrière" % round(recul), CYAN, 4)
+        nouveau.dire(t("Retour de {n} s en arrière", n=round(recul)), CYAN, 4)
 
     def basculer_triche(self, option):
         u = self.u
         u.triche[option] = not u.triche.get(option)
-        noms = {"carburant": "Carburant infini", "indestructible": "Indestructible"}
-        u.dire("%s : %s" % (noms[option], "oui" if u.triche[option] else "non"), CYAN, 3)
+        noms = {"carburant": t("Carburant infini"), "indestructible": t("Indestructible")}
+        etat = t("oui") if u.triche[option] else t("non")
+        u.dire(t("{nom} : {etat}", nom=noms[option], etat=etat), CYAN, 3)
 
     def _triche_plein(self):
         triche.faire_le_plein(self.u.actif)
-        self.u.dire("Plein fait !", CYAN, 3)
+        self.u.dire(t("Plein fait !"), CYAN, 3)
 
     def _triche_orbite(self):
         triche.mettre_en_orbite(self.u, self.u.actif)
         self.panneau = None
-        self.u.dire("Te voilà en orbite", CYAN, 3)
+        self.u.dire(t("Te voilà en orbite"), CYAN, 3)
 
     def _triche_fonds(self):
         self.u.fonds += triche.FONDS
-        self.u.dire("+%s de fonds" % fmt_nombre(triche.FONDS), CYAN, 3)
+        self.u.dire(t("+{montant} de fonds", montant=fmt_nombre(triche.FONDS)), CYAN, 3)
 
     def _triche_pieces(self):
         self.u.triche["pieces"] = True
-        self.u.dire("Toutes les pièces sont débloquées", CYAN, 3)
+        self.u.dire(t("Toutes les pièces sont débloquées"), CYAN, 3)
 
     def _panneau_options(self, surf, l, h):
         """Options en vol : réglages à gauche, triche à droite (si elle est autorisée)."""
         u, a = self.u, self.u.actif
-        oui = lambda x: "oui" if x else "non"
+        oui = lambda x: t("oui") if x else t("non")
         carriere = not u.bac_a_sable
-        regl = [("Son : %s" % reglages.NOMS_SON[reglages.SON], self.changer_son, True),
-                ("Aides au pilotage : %s" % oui(reglages.AIDES), self.basculer_aides, True)]
+        regl = [(t("Son : {mode}", mode=t("son_" + reglages.SON)), self.changer_son, True),
+                (t("aides_pilotage", etat=oui(reglages.AIDES)), self.basculer_aides, True)]
         tri = []
         if reglages.TRICHE:
-            tri = [("Revenir 30 s en arrière", self.revenir_en_arriere, bool(self.app.historique.photos)),
-                   ("Faire le plein", self._triche_plein, a is not None),
-                   ("Carburant infini : %s" % oui(u.triche.get("carburant")),
+            tri = [(t("Revenir 30 s en arrière"), self.revenir_en_arriere, bool(self.app.historique.photos)),
+                   (t("Faire le plein"), self._triche_plein, a is not None),
+                   (t("Carburant infini : {etat}", etat=oui(u.triche.get("carburant"))),
                     lambda: self.basculer_triche("carburant"), True),
-                   ("Indestructible : %s" % oui(u.triche.get("indestructible")),
+                   (t("Indestructible : {etat}", etat=oui(u.triche.get("indestructible"))),
                     lambda: self.basculer_triche("indestructible"), True),
-                   ("Mettre en orbite", self._triche_orbite, a is not None),
-                   ("+%s de fonds" % fmt_nombre(triche.FONDS), self._triche_fonds, carriere),
-                   ("Tout débloquer", self._triche_pieces, carriere and not u.triche.get("pieces"))]
-        t = self.tactile
-        lb, hb, pas, taille = (300, 44, 50, 17) if t else (240, 30, 38, 14)
+                   (t("Mettre en orbite"), self._triche_orbite, a is not None),
+                   (t("+{montant} de fonds", montant=fmt_nombre(triche.FONDS)), self._triche_fonds, carriere),
+                   (t("Tout débloquer"), self._triche_pieces, carriere and not u.triche.get("pieces"))]
+        tactile = self.tactile
+        lb, hb, pas, taille = (300, 44, 50, 17) if tactile else (240, 30, 38, 14)
         colonnes = 2 if tri else 1
         rangs = max(len(regl) + 1, len(tri))              # +1 : « Fermer » en bas des réglages
         larg = colonnes * lb + (colonnes - 1) * 24 + 60
         haut = 104 + pas * rangs
         x, y = (l - larg) // 2, max(4, (h - haut) // 2)
         panneau(surf, (x, y, larg, haut), alpha=245)
-        texte(surf, "OPTIONS", (l // 2, y + 14), 22 if t else 20, BLANC, gras=True, ancre="hc")
-        sous = "Appui long sur l'horloge : ouvre ce menu" if t else "F12 : ouvre ce menu"
+        texte(surf, t("options_titre"), (l // 2, y + 14), 22 if tactile else 20, BLANC, gras=True, ancre="hc")
+        sous = t("Appui long sur l'horloge : ouvre ce menu") if tactile else t("F12 : ouvre ce menu")
         texte(surf, sous, (l // 2, y + 44), 13, GRIS, ancre="hc")
         self.boutons = []
-        for c, (titre, entrees, coul) in enumerate((("RÉGLAGES", regl, CYAN), ("TRICHE", tri, ORANGE))):
+        for c, (titre, entrees, coul) in enumerate(((t("RÉGLAGES"), regl, CYAN), (t("TRICHE"), tri, ORANGE))):
             if not entrees:
                 continue
             cx = x + 30 + c * (lb + 24)
             texte(surf, titre, (cx, y + 70), 14, coul, gras=True)
             for k, (lib, act, ok) in enumerate(entrees):
                 self.boutons.append(Bouton((cx, y + 92 + pas * k, lb, hb), lib, act, taille, actif=ok))
-        self.boutons.append(Bouton((x + 30, y + 92 + pas * (rangs - 1), lb, hb), "Fermer",
+        self.boutons.append(Bouton((x + 30, y + 92 + pas * (rangs - 1), lb, hb), t("Fermer"),
                                    lambda: self.ouvrir("options"), taille))
 
     def remplir_section(self, k):
@@ -775,10 +785,10 @@ class SceneVol:
         carb, mono = a.remplir(k)
         nom = nom_section(sections[k])
         if carb + mono < 0.5:
-            self.u.dire("Rien à transférer vers %s (plein, ou le reste est vide)" % nom, ORANGE, 4)
+            self.u.dire(t("Rien à transférer vers {nom} (plein, ou le reste est vide)", nom=nom), ORANGE, 4)
         else:
-            self.u.dire("Transfert vers %s : %s de carburant, %s de monergol" % (
-                nom, fmt_masse(carb), fmt_masse(mono)), VERT, 5)
+            self.u.dire(t("Transfert vers {nom} : {carb} de carburant, {mono} de monergol", nom=nom,
+                          carb=fmt_masse(carb), mono=fmt_masse(mono)), VERT, 5)
 
     def _panneau_carburant(self, surf, l, h):
         """Transfert de carburant entre les parties du vaisseau (vaisseaux amarrés, étages)."""
@@ -795,8 +805,8 @@ class SceneVol:
         haut = 84 + hl * n + (62 if tactile else 50)
         x, y = (l - larg) // 2, max(8, (h - haut) // 2)
         panneau(surf, (x, y, larg, haut), alpha=245)
-        texte(surf, "TRANSFERT DE CARBURANT", (x + 16, y + 14), 18, BLANC, gras=True)
-        texte(surf, "« Remplir » puise le carburant et le monergol dans toutes les autres parties.",
+        texte(surf, t("TRANSFERT DE CARBURANT"), (x + 16, y + 14), 18, BLANC, gras=True)
+        texte(surf, t("« Remplir » puise le carburant et le monergol dans toutes les autres parties."),
               (x + 16, y + 44), 13, GRIS)
         yy = y + 74
         lb = 110 if tactile else 96
@@ -805,45 +815,45 @@ class SceneVol:
             carb, cap = sum(p.carburant for p in sec), sum(p.m.carburant for p in sec)
             mono, capm = sum(p.mono for p in sec), sum(p.m.mono for p in sec)
             texte(surf, nom_section(sec), (x + 16, yy), 14, BLANC, gras=True)
-            for j, (val, maxi, coul, nom) in enumerate(((carb, cap, VERT, "Carburant"), (mono, capm, CYAN, "Monergol"))):
+            for j, (val, maxi, coul, nom) in enumerate(((carb, cap, VERT, t("Carburant")), (mono, capm, CYAN, t("Monergol")))):
                 if maxi <= 0:
                     continue
                 by = yy + 22 + j * 16
                 pygame.draw.rect(surf, (40, 46, 60), (x + 16, by + 4, lj // 2, 7), border_radius=3)
                 pygame.draw.rect(surf, coul, (x + 16, by + 4, int(lj // 2 * val / maxi), 7), border_radius=3)
-                texte(surf, "%s %s / %s" % (nom, fmt_masse(val), fmt_masse(maxi)), (x + 24 + lj // 2, by), 12, GRIS)
+                texte(surf, t("{nom} {val} / {maxi}", nom=nom, val=fmt_masse(val), maxi=fmt_masse(maxi)), (x + 24 + lj // 2, by), 12, GRIS)
             plein = carb >= cap - 0.5 and mono >= capm - 0.5
-            self.boutons.append(Bouton((x + larg - 16 - lb, yy + 2, lb, hl - 16), "Remplir",
+            self.boutons.append(Bouton((x + larg - 16 - lb, yy + 2, lb, hl - 16), t("Remplir"),
                                        lambda k=k: self.remplir_section(k), 16 if tactile else 14, actif=not plein))
             yy += hl
         self.boutons.append(Bouton((x + larg // 2 - 70, y + haut - (54 if tactile else 42), 140, 44 if tactile else 32),
-                                   "Fermer", lambda: self.ouvrir("carburant"), 16 if tactile else 14))
+                                   t("Fermer"), lambda: self.ouvrir("carburant"), 16 if tactile else 14))
 
     def _panneau_pause(self, surf, l, h):
         app, u = self.app, self.u
         if self.tactile:                          # pas de touches M / H / F9 sur un téléphone
-            return self._menu_boutons(surf, "PAUSE", "La simulation est arrêtée", [
-                ("Reprendre", lambda: self.ouvrir("pause"), True),
-                ("Missions", lambda: self.ouvrir("missions"), True),
-                ("Aide", lambda: self.ouvrir("aide"), True),
-                ("Sauvegarder", self.sauvegarder, True),
-                ("Transfert de carburant", lambda: self.ouvrir("carburant"),
+            return self._menu_boutons(surf, t("PAUSE"), t("La simulation est arrêtée"), [
+                (t("Reprendre"), lambda: self.ouvrir("pause"), True),
+                (t("Missions"), lambda: self.ouvrir("missions"), True),
+                (t("Aide"), lambda: self.ouvrir("aide"), True),
+                (t("Sauvegarder"), self.sauvegarder, True),
+                (t("Transfert de carburant"), lambda: self.ouvrir("carburant"),
                  u.actif is not None and len(u.actif.sections_reservoirs()) >= 2),
-                ("Options", lambda: self.ouvrir("options"), True),
-                ("Hangar (nouveau vaisseau)", app.aller_hangar, True),
-                ("Revenir au lancement", app.revenir_au_lancement, u.instantane is not None),
-                ("Menu principal", app.aller_menu, True),
-                ("Quitter le jeu", app.quitter, True)], l, h)
-        self._menu_boutons(surf, "PAUSE", "La simulation est arrêtée", [
-            ("Reprendre", lambda: self.ouvrir("pause"), True),
-            ("Hangar (nouveau vaisseau)", app.aller_hangar, True),
-            ("Revenir au lancement", app.revenir_au_lancement, u.instantane is not None),
-            ("Sauvegarder (F5)", self.sauvegarder, True),
-            ("Transfert de carburant", lambda: self.ouvrir("carburant"),
+                (t("Options"), lambda: self.ouvrir("options"), True),
+                (t("Hangar (nouveau vaisseau)"), app.aller_hangar, True),
+                (t("Revenir au lancement"), app.revenir_au_lancement, u.instantane is not None),
+                (t("Menu principal"), app.aller_menu, True),
+                (t("Quitter le jeu"), app.quitter, True)], l, h)
+        self._menu_boutons(surf, t("PAUSE"), t("La simulation est arrêtée"), [
+            (t("Reprendre"), lambda: self.ouvrir("pause"), True),
+            (t("Hangar (nouveau vaisseau)"), app.aller_hangar, True),
+            (t("Revenir au lancement"), app.revenir_au_lancement, u.instantane is not None),
+            (t("Sauvegarder (F5)"), self.sauvegarder, True),
+            (t("Transfert de carburant"), lambda: self.ouvrir("carburant"),
              u.actif is not None and len(u.actif.sections_reservoirs()) >= 2),
-            ("Options", lambda: self.ouvrir("options"), True),
-            ("Menu principal", app.aller_menu, True),
-            ("Quitter le jeu", app.quitter, True)], l, h)
+            (t("Options"), lambda: self.ouvrir("options"), True),
+            (t("Menu principal"), app.aller_menu, True),
+            (t("Quitter le jeu"), app.quitter, True)], l, h)
 
     def _panneau_perdu(self, surf, l, h):
         app, u = self.app, self.u
@@ -852,7 +862,7 @@ class SceneVol:
             u.vaisseau_suivant()
             self.cam.focus = None
 
-        self._menu_boutons(surf, "VAISSEAU PERDU", "Ça arrive aux meilleurs.", [
-            ("Revenir au lancement", app.revenir_au_lancement, u.instantane is not None),
-            ("Retour au hangar", app.aller_hangar, True),
-            ("Contrôler un autre vaisseau", suivant, any(v.controlable() for v in u.vaisseaux))], l, h, ROUGE)
+        self._menu_boutons(surf, t("VAISSEAU PERDU"), t("Ça arrive aux meilleurs."), [
+            (t("Revenir au lancement"), app.revenir_au_lancement, u.instantane is not None),
+            (t("Retour au hangar"), app.aller_hangar, True),
+            (t("Contrôler un autre vaisseau"), suivant, any(v.controlable() for v in u.vaisseaux))], l, h, ROUGE)

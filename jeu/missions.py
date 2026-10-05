@@ -6,6 +6,7 @@ Pour ajouter une mission : une ligne dans MISSIONS avec une fonction test(univer
 from math import hypot
 from .constantes import NOM_STATION, VERT, CYAN
 from .pieces import CATALOGUE
+from .textes import t
 
 
 class Mission:
@@ -131,10 +132,11 @@ def verifier(u):
             if not u.bac_a_sable:
                 u.fonds += m.prime
                 u.bruit("succes")
-                u.dire("Mission accomplie : %s  (+%s)" % (m.titre, format(m.prime, ",").replace(",", " ")), VERT, 8)
+                u.dire(t("Mission accomplie : {titre}  (+{prime})", titre=t(m.titre),
+                        prime=format(m.prime, ",").replace(",", " ")), VERT, 8)
                 nouvelles = [p.nom for p in CATALOGUE.values() if p.debloque_par == m.ident]
                 if nouvelles:
-                    u.dire("Nouvelles pièces : " + ", ".join(nouvelles), CYAN, 10)
+                    u.dire(t("Nouvelles pièces : {noms}", noms=", ".join(t(n) for n in nouvelles)), CYAN, 10)
             else:
                 u.bruit("succes")
-                u.dire("Mission accomplie : %s" % m.titre, VERT, 8)
+                u.dire(t("Mission accomplie : {titre}", titre=t(m.titre)), VERT, 8)

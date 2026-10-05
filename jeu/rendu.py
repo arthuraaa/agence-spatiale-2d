@@ -16,6 +16,7 @@ from .constantes import (MIROIR_X, ZOOM_MIN, ZOOM_MAX, RAYON_GRAND_CERCLE, LONGI
 from . import manoeuvre as mod_manoeuvre
 from .orbite import TAU, INFINI, angle_pi
 from .corps import Corps
+from .textes import t
 from .interface import texte, fmt_distance, fmt_vitesse
 
 
@@ -501,7 +502,7 @@ def _dessiner_corps(surf, u, cam, c, fond):
     if 40 < rs < 30000 and rp < 400:
         cercle(surf, melange(fond, c.couleur, 0.22), sx, sy, rs)
     if rp < 90 and (c.parent is None or c.a * cam.zoom > 45):
-        texte(surf, c.nom, (sx, sy + max(rp, 3) + 4), 13, melange(GRIS, c.couleur, 0.4), ancre="hc")
+        texte(surf, t(c.nom), (sx, sy + max(rp, 3) + 4), 13, melange(GRIS, c.couleur, 0.4), ancre="hc")
 
 
 def _decor_sol(surf, u, cam, c, couleur):

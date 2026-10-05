@@ -26,7 +26,7 @@ from PIL import Image
 
 # Passer à True quand le jeu sera traduit (module de textes + textes traduits) :
 # le test exigera alors une couverture d'au moins 95 % des textes affichables.
-TRADUCTION_ANGLAISE = False
+TRADUCTION_ANGLAISE = True
 
 # Limites officielles de la fiche Google Play
 MAX_NOM = 30
@@ -83,10 +83,11 @@ def test_fiche_anglaise():
     assert 0 < len(nom) <= MAX_NOM and 0 < len(courte) <= MAX_COURTE and 0 < len(complete) <= MAX_COMPLETE
     for mot in ("build", "rocket", "orbit", "moon"):
         assert mot in (courte + complete).lower(), "la fiche EN doit contenir « %s »" % mot
-    # Honnêteté : tant que le jeu n'est pas traduit, la fiche EN doit le dire.
-    if not TRADUCTION_ANGLAISE:
-        assert "french" in complete.lower(), \
-            "la fiche EN doit préciser que le jeu est en français (tant que la traduction n'existe pas)"
+    # Honnêteté : la traduction existe maintenant, la fiche EN ne doit plus
+    # dire que le jeu est « in French ».
+    if TRADUCTION_ANGLAISE:
+        assert "french" not in complete.lower(), \
+            "la fiche EN ne doit plus dire que le jeu est en français seulement"
     # Section fiches absente de fiche-en.md mais utile : notes de version EN
     assert "release notes" in fiche or "notes" in " ".join(fiche), "il manque les notes de version EN"
 
@@ -201,7 +202,7 @@ def test_langues():
     assert os.path.exists(os.path.join(RACINE, "jeu", "textes.py")), "il manque jeu/textes.py"
     import jeu.textes as textes
     total = len(textes.TOUT)                       # clés attendues : chaque texte du jeu
-    traduits = sum(1 for cle in textes.TOUT if "en" in textes.TOUT[cle])
+    traduits = sum(1 for cle in textes.TOUT if (textes.TOUT[cle].get("en") or "").strip())
     couverture = traduits / max(total, 1)
     print("   traduction EN : %d/%d textes (%.0f %%)" % (traduits, total, 100 * couverture))
     assert couverture >= 0.95, "traduction anglaise incomplète : %.0f %%" % (100 * couverture)

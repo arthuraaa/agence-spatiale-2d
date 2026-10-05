@@ -21,6 +21,8 @@ import pygame
 
 # Si le jeu lui-même ne se charge pas (fichier manquant...), on le dira à l'écran plutôt que
 # de laisser l'application se fermer sans un mot (voir ecran_erreur, en bas du fichier).
+from jeu.textes import t
+
 try:
     from jeu.constantes import TITRE, LARGEUR, HAUTEUR, FPS
     from jeu.pieces import MODELES
@@ -53,7 +55,7 @@ class Application:
             self.ecran.fill((0, 0, 0))
             from jeu.interface import texte
             l, h = self.ecran.get_size()
-            texte(self.ecran, "Préparation des sons…", (l // 2, h // 2), 20, (200, 210, 230), ancre="c")
+            texte(self.ecran, t("Préparation des sons…"), (l // 2, h // 2), 20, (200, 210, 230), ancre="c")
             pygame.display.flip()
         sons.initialiser()
         musique.preparer()                          # notes fabriquées en arrière-plan (la 1re fois)
@@ -113,7 +115,7 @@ class Application:
             print("Chargement impossible :", e)
             return
         self.aller_vol()
-        self.univers.dire("Partie chargée")
+        self.univers.dire(t("Partie chargée"))
 
     def lancer(self, nom, cles):
         self.univers.lancer(nom, cles)
@@ -196,7 +198,7 @@ def ecran_erreur(trace):
             police = pygame.font.Font(os.path.join(_DOSSIER, "jeu", "polices", "DejaVuSans.ttf"), 14)
         except Exception:
             police = pygame.font.Font(None, 20)
-        lignes = ["Le jeu a planté. Touche l'écran (ou une touche) pour quitter.", ""]
+        lignes = [t("Le jeu a planté. Touche l'écran (ou une touche) pour quitter."), ""]
         for ligne in trace.splitlines()[-24:]:
             lignes += textwrap.wrap(ligne, max(20, largeur // 8)) or [""]
         while True:

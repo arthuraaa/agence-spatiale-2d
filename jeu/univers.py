@@ -25,6 +25,7 @@ from .trajectoire import predire, approche_minimale
 from . import manoeuvre as mod_manoeuvre
 from . import plateforme, reglages
 from . import missions as mod_missions
+from .textes import t
 
 MODES_SAS = ["stab", "pro", "retro", "rad+", "rad-", "cible", "anti", "manoeuvre"]
 REFERENCES = ["orbite", "surface", "cible"]
@@ -167,18 +168,18 @@ class Univers:
 
     def situation(self, v):
         if v.mode == "pose":
-            return "Posé"
+            return t("Posé")
         alt = self.altitude(v)
         if alt < v.corps.atm_h:
-            return "Vol atmosphérique"
+            return t("Vol atmosphérique")
         o = v.orbite
         if o is None:
-            return "En vol"
+            return t("En vol")
         if not o.elliptique or o.ra > v.corps.soi:
-            return "Trajectoire d'évasion"
+            return t("Trajectoire d'évasion")
         if o.rp < v.corps.R + v.corps.atm_h:
-            return "Vol suborbital"
-        return "En orbite"
+            return t("Vol suborbital")
+        return t("En orbite")
 
     # ======================================================================
     # Création / lancement / récupération
@@ -212,9 +213,9 @@ class Univers:
         self.actif = v
         self.perdu = False
         self.accel = 0
-        conseil = "Pousse la manette des gaz vers le haut" if plateforme.TACTILE else "Mets les gaz (Z ou W)"
+        conseil = t("Pousse la manette des gaz vers le haut") if plateforme.TACTILE else t("Mets les gaz (Z ou W)")
         if not self.tutoriel:                            # pendant un tutoriel, la bulle explique
-            self.dire("%s est sur le pas de tir. %s pour décoller !" % (v.nom, conseil), CYAN, 8)
+            self.dire(t("{nom} est sur le pas de tir. {conseil} pour décoller !", nom=v.nom, conseil=conseil), CYAN, 8)
         return v
 
     def peut_recuperer(self, v):
@@ -228,7 +229,7 @@ class Univers:
             self.fonds += gain
         self._retirer(v)
         if not silencieux:
-            self.dire("%s récupéré (+%d)" % (v.nom, gain), VERT)
+            self.dire(t("{nom} récupéré (+{gain})", nom=v.nom, gain=gain), VERT)
         return True
 
     def _retirer(self, v):
@@ -238,6 +239,11 @@ class Univers:
             self.cible = None
         if self.actif is v:
             self.actif = None
+
+    def _message_destruction(self, v, raison):
+        """« {nom} détruit : {raison} », dans la langue active."""
+        return t("{nom} détruit{raison}", nom=v.nom,
+                 raison=t(" : {raison}", raison=raison) if raison else "")
 
     def _detruire(self, v, raison="", silencieux=False):
         if v.detruit:
@@ -257,9 +263,9 @@ class Univers:
         if etait_actif:
             self.perdu = True
             self.accel = 0
-            self.dire("%s détruit%s" % (v.nom, " : " + raison if raison else ""), ROUGE, 8)
+            self.dire(self._message_destruction(v, raison), ROUGE, 8)
         elif not silencieux and v.controlable():
-            self.dire("%s détruit%s" % (v.nom, " : " + raison if raison else ""), ORANGE)
+            self.dire(self._message_destruction(v, raison), ORANGE)
 
     # ======================================================================
     # Actions du joueur
@@ -270,7 +276,7 @@ class Univers:
         if v is a or not v.controlable():
             return False
         if a is not None and a.mode == "physique" and self.altitude(a) < a.corps.atm_h:
-            self.dire("Impossible de changer de vaisseau en vol atmosphérique", ORANGE)
+            self.dire(t("Impossible de changer de vaisseau en vol atmosphérique"), ORANGE)
             return False
         if a is not None:
             a.gaz = 0.0
@@ -282,7 +288,7 @@ class Univers:
         if v.mode == "rails":
             self._predire(v)
         self.recalculer_plan()
-        self.dire("Contrôle : %s" % v.nom, CYAN)
+        self.dire(t("Contrôle : {nom}", nom=v.nom), CYAN)
         return True
 
     def vaisseau_suivant(self):
@@ -299,7 +305,7 @@ class Univers:
         self._calculer_approche()
         self.recalculer_plan()
         if obj is not None:
-            self.dire("Cible : %s" % obj.nom, CYAN, 3)
+            self.dire(t("Cible : {nom}", nom=t(obj.nom)), CYAN, 3)
 
     def changer_acceleration(self, delta):
         self.accel = max(0, min(len(ACCELERATIONS) - 1, self.accel + delta))
@@ -308,7 +314,7 @@ class Univers:
         if self.accel < avant and delta > 0:
             a = self.actif
             if a is not None and a.mode == "physique":
-                self.dire("Accélération limitée à x4 (poussée ou atmosphère)", ORANGE, 3)
+                self.dire(t("Accélération limitée à x4 (poussée ou atmosphère)"), ORANGE, 3)
 
     def separer_etage(self):
         v = self.actif
@@ -318,15 +324,15 @@ class Univers:
         if porteurs_actifs(v.pieces):                  # les boosters partent en premier
             self._larguer_boosters(v)
             self.bruit("separation")
-            self.dire("Boosters largués", JAUNE, 3)
+            self.dire(t("Boosters largués"), JAUNE, 3)
             return
         i = indice_decoupleur_bas(v.pieces)
         if i is None or i == 0:
-            self.dire("Aucun étage à séparer", ORANGE, 3)
+            self.dire(t("Aucun étage à séparer"), ORANGE, 3)
             return
         self._scinder(v, i, 1.2)
         self.bruit("separation")
-        self.dire("Séparation de l'étage", JAUNE, 3)
+        self.dire(t("Séparation de l'étage"), JAUNE, 3)
 
     def desamarrer(self):
         v = self.actif
@@ -334,13 +340,13 @@ class Univers:
             return
         js = v.jonctions()
         if not js:
-            self.dire("Aucun port amarré à séparer", ORANGE, 3)
+            self.dire(t("Aucun port amarré à séparer"), ORANGE, 3)
             return
         k = v.pieces.index(v.racine) if v.racine in v.pieces else 0
         j = min(js, key=lambda i: min(abs(i - k), abs(i - 1 - k)))
         autre = self._scinder(v, j, 0.4)
         v.separe_de, autre.separe_de = autre.id, v.id
-        self.dire("Désamarrage de %s" % autre.nom, JAUNE, 4)
+        self.dire(t("Désamarrage de {nom}", nom=autre.nom), JAUNE, 4)
         self.bruit("amarrage")
 
     def ouvrir_parachute(self):
@@ -349,20 +355,20 @@ class Univers:
             return
         plies = [p for p in v.parachutes() if p.parachute == "plie"]
         if not plies:
-            self.dire("Pas de parachute disponible", ORANGE, 3)
+            self.dire(t("Pas de parachute disponible"), ORANGE, 3)
             return
         if v.corps.densite(self.altitude(v)) <= 0.0:
-            self.dire("Pas d'atmosphère ici : le parachute est inutile", ORANGE, 3)
+            self.dire(t("Pas d'atmosphère ici : le parachute est inutile"), ORANGE, 3)
             return
         x, y, vx, vy = self.etat(v)
         w = v.corps.vitesse_rotation
         if hypot(vx + w * y, vy - w * x) > 250.0:
-            self.dire("Trop rapide pour ouvrir le parachute (max 250 m/s)", ORANGE, 3)
+            self.dire(t("Trop rapide pour ouvrir le parachute (max 250 m/s)"), ORANGE, 3)
             return
         for p in plies:
             p.parachute = "ouvert"
             p.ouverture = 0.05
-        self.dire("Parachute déployé", VERT, 3)
+        self.dire(t("Parachute déployé"), VERT, 3)
         self.bruit("parachute")
 
     # ======================================================================
@@ -373,13 +379,13 @@ class Univers:
         self.bruits.append(nom)
         del self.bruits[:-20]
 
-    def placer_noeud(self, t, pro=0.0, rad=0.0):
+    def placer_noeud(self, instant, pro=0.0, rad=0.0):
         """Crée (ou remplace) le nœud du vaisseau actif à l'instant t."""
         v = self.actif
         if v is None or v.mode == "pose" or not v.troncons:
-            self.dire("Il faut être en vol pour planifier une manœuvre", ORANGE, 3)
+            self.dire(t("Il faut être en vol pour planifier une manœuvre"), ORANGE, 3)
             return None
-        v.noeud = mod_manoeuvre.Manoeuvre(max(t, self.t), pro, rad)
+        v.noeud = mod_manoeuvre.Manoeuvre(max(instant, self.t), pro, rad)
         self.recalculer_plan()
         self.bruit("bip")
         return v.noeud
@@ -406,7 +412,7 @@ class Univers:
             return
         p = mod_manoeuvre.periode_au_noeud(v, n)
         if p is None:
-            self.dire("Orbite non fermée : impossible de décaler d'un tour", ORANGE, 3)
+            self.dire(t("Orbite non fermée : impossible de décaler d'un tour"), ORANGE, 3)
             return
         self.regler_noeud(t=n.t + tours * p)
 
@@ -455,7 +461,7 @@ class Univers:
             self.supprimer_noeud()
             if self.pilote is not None:                # exécution automatique : on coupe net
                 v.gaz = 0.0
-            self.dire("Manœuvre terminée (écart %.2f m/s)" % ecart, VERT, 4)
+            self.dire(t("Manœuvre terminée (écart {ecart} m/s)", ecart="%.2f" % ecart), VERT, 4)
 
     # ======================================================================
     # Boucle de simulation
@@ -465,7 +471,7 @@ class Univers:
         if not reglages.AIDES or self.actif is None:
             return
         self.pilote = programme
-        self.dire("Pilote automatique : %s" % programme.nom, CYAN, 4)
+        self.dire(t("Pilote automatique : {nom}", nom=t(programme.nom)), CYAN, 4)
 
     def arreter_pilote(self, fin=False):
         if self.pilote is None:
@@ -476,7 +482,7 @@ class Univers:
         if v is not None and (v.sas == "pilote" or (v.sas == "manoeuvre" and v.noeud is None)):
             v.sas = "stab"
         if not fin:
-            self.dire("Pilote automatique désactivé", ORANGE, 3)
+            self.dire(t("Pilote automatique désactivé"), ORANGE, 3)
 
     def avancer(self, dt_reel):
         dt_reel = min(dt_reel, 0.05)
@@ -791,42 +797,42 @@ class Univers:
                 if proche:
                     self._vers_physique(v, etat)
                     if v is self.actif:
-                        self.dire("Entrée dans l'atmosphère de %s" % v.corps.nom, JAUNE)
+                        self.dire(t("Entrée dans l'atmosphère de {corps}", corps=t(v.corps.nom)), JAUNE)
                 else:
                     self._detruire(v, "désintégré dans l'atmosphère", silencieux=(v.racine is None))
             elif tr.fin == "impact":
                 self._toucher(v, etat[0], etat[1], etat[2], etat[3], te)
 
-    def _changer_corps(self, v, nouveau, etat, t):
+    def _changer_corps(self, v, nouveau, etat, instant):
         """Passe dans la sphère d'influence d'un autre corps (parent ou satellite)."""
         ancien = v.corps
         x, y, vx, vy = etat
         if nouveau is ancien.parent:
-            b = ancien.etat_relatif(t)
+            b = ancien.etat_relatif(instant)
             etat = (x + b[0], y + b[1], vx + b[2], vy + b[3])
         else:
-            b = nouveau.etat_relatif(t)
+            b = nouveau.etat_relatif(instant)
             etat = (x - b[0], y - b[1], vx - b[2], vy - b[3])
         v.corps = nouveau
         v.drapeaux.add("soi:" + nouveau.nom)
         v.cache_etat = (None, None)
         if v.mode == "rails":
-            orb = Orbite(etat[0], etat[1], etat[2], etat[3], nouveau.mu, t)
+            orb = Orbite(etat[0], etat[1], etat[2], etat[3], nouveau.mu, instant)
             if orb.degeneree:
                 self._vers_physique(v, etat)
             else:
                 v.orbite = orb
-                self._predire(v, t)
+                self._predire(v, instant)
         else:
             v.x, v.y, v.vx, v.vy = etat
         if v is self.actif:
             if nouveau is ancien.parent:
-                self.dire("Sortie de la sphère d'influence de %s" % ancien.nom, CYAN)
+                self.dire(t("Sortie de la sphère d'influence de {corps}", corps=t(ancien.nom)), CYAN)
             else:
-                self.dire("Entrée dans la sphère d'influence de %s" % nouveau.nom, CYAN)
+                self.dire(t("Entrée dans la sphère d'influence de {corps}", corps=t(nouveau.nom)), CYAN)
                 self.accel = 0
 
-    def _toucher(self, v, x, y, vx, vy, t):
+    def _toucher(self, v, x, y, vx, vy, instant):
         """Contact avec le sol : atterrissage réussi ou destruction."""
         c = v.corps
         r = hypot(x, y)
@@ -844,16 +850,16 @@ class Univers:
         v.cache_etat = (None, None)
         if c.gazeux:
             v.mode = "physique"
-            self._detruire(v, "englouti par %s" % c.nom)
+            self._detruire(v, t("englouti par {corps}", corps=t(c.nom)))
         elif (-v_vert > v_max or abs(v_horiz) > h_max or inclinaison > incl_max) \
                 and not self.triche.get("indestructible"):
             v.mode = "physique"
             if inclinaison > incl_max:
-                raison = "posé de travers"
+                raison = t("posé de travers")
             elif abs(v_horiz) > h_max:
-                raison = "vitesse horizontale trop forte (%.0f m/s)" % abs(v_horiz)
+                raison = t("vitesse horizontale trop forte ({v:.0f} m/s)", v=abs(v_horiz))
             else:
-                raison = "impact à %.0f m/s" % -v_vert
+                raison = t("impact à {v:.0f} m/s", v=-v_vert)
             self._detruire(v, raison)
         else:
             if v is self.actif:
@@ -861,7 +867,7 @@ class Univers:
             if inclinaison > incl_max:                 # triche « indestructible » : on le redresse
                 v.angle = atan2(y, x)
             v.mode = "pose"
-            v.longitude = angle_pi(atan2(y, x) - c.angle_rotation(t))
+            v.longitude = angle_pi(atan2(y, x) - c.angle_rotation(instant))
             v.omega = 0.0
             v.gaz = 0.0
             v.orbite = None
@@ -870,7 +876,7 @@ class Univers:
                 p.parachute, p.ouverture = "plie", 0.0
             v.drapeaux.add("pose:" + c.nom)
             if v is self.actif:
-                self.dire("Posé sur %s (%.1f m/s)" % (c.nom, -v_vert), VERT)
+                self.dire(t("Posé sur {corps} ({v:.1f} m/s)", corps=t(c.nom), v=-v_vert), VERT)
                 self.accel = 0
 
     # ------------------------------------------------------ gestion des modes
@@ -898,7 +904,7 @@ class Univers:
                     pesanteur = c.mu / (r * r) - c.vitesse_rotation ** 2 * r
                     if poussee / v.masse() > pesanteur:
                         self._vers_physique(v, e)
-                        self.dire("Décollage !", VERT, 3)
+                        self.dire(t("Décollage !"), VERT, 3)
             elif v is a:
                 besoin = self._besoin_physique(v)
                 if v.mode == "rails" and besoin:
@@ -992,7 +998,7 @@ class Univers:
         if v.racine is not None and v.racine.proprietaire:
             v.nom = v.racine.proprietaire
         if nouveau.racine is None:
-            nouveau.nom = self.nom_unique("Débris de %s" % v.nom)
+            nouveau.nom = self.nom_unique(t("Débris de {nom}", nom=v.nom))
         else:
             nouveau.nom = self.nom_unique(nouveau.proprietaire_majoritaire())
         self.vaisseaux.append(nouveau)
@@ -1051,7 +1057,7 @@ class Univers:
         b.detruit = True
         self._vers_physique(a, etat)
         a.gaz = 0.0
-        self.dire("Amarrage réussi avec %s !" % nom_b, VERT, 6)
+        self.dire(t("Amarrage réussi avec {nom} !", nom=nom_b), VERT, 6)
         self.bruit("amarrage")
 
     # ------------------------------------------------------ tâches périodiques
@@ -1081,7 +1087,7 @@ class Univers:
             duree = mod_manoeuvre.duree_combustion(a, a.noeud.dv())[0]
             if self.t > a.noeud.t + max(60.0, duree):          # nœud jamais exécuté : on l'efface
                 self.supprimer_noeud()
-                self.dire("Nœud de manœuvre dépassé", ORANGE, 4)
+                self.dire(t("Nœud de manœuvre dépassé"), ORANGE, 4)
         if a is not None:                               # référence de vitesse automatique
             seuil = max(a.corps.atm_h, 2500.0)
             auto = "surface" if (a.mode == "pose" or self.altitude(a) < seuil) else "orbite"

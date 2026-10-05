@@ -21,7 +21,9 @@ Orbital mechanics are realistic (orbits, spheres of influence, atmosphere, plane
 
 Career mode with missions and unlockable parts, or sandbox. Ambient music and sound effects. Cheat menu for fun: rewind 30 seconds, infinite fuel…
 
-No ads, no in-app purchases, no internet connection, no data collection. (The game is in French.)
+Available in English (the language follows your device, and you can switch anytime in the options).
+
+No ads, no in-app purchases, no internet connection, no data collection.
 
 ## Release notes (max 500)
-First public release: rocket building, orbits, docking, Moon and Mars, 8 tutorials, 4 historical scenarios (including Apollo 11), flight assists, music and sound effects.
+Version 1.7.0: the game is now fully translated into English (choose it in the options). Same game otherwise: rocket building, orbits, docking, Moon and Mars, 8 tutorials, 4 historical scenarios (including Apollo 11), flight assists, music and sound effects.

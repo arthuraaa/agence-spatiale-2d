@@ -12,6 +12,7 @@ from .orbite import INFINI
 from .interface import (police, texte, panneau, Bouton, fmt_distance, fmt_vitesse, fmt_duree, fmt_date,
                         fmt_nombre)
 from .missions import mission_suggeree
+from .textes import t
 
 LIBELLES_SAS = [("off", "OFF"), ("stab", "STAB"), ("pro", "PRO"), ("retro", "RETRO"),
                 ("rad+", "RAD+"), ("rad-", "RAD-"), ("cible", "CIBLE"), ("anti", "ANTI")]
@@ -28,29 +29,29 @@ def infos_noeud(u, v):
     n = v.noeud
     dv = n.dv()
     duree, assez = mod_manoeuvre.duree_combustion(v, dv)
-    lignes = [("Δv restant" if n.commencee else "Δv", fmt_vitesse(dv), BLEU_PLAN)]
+    lignes = [(t("Δv restant") if n.commencee else t("Δv"), fmt_vitesse(dv), BLEU_PLAN)]
     if not n.commencee:
-        lignes.append(("   prograde", "%+.1f m/s" % n.pro, VERT))
-        lignes.append(("   radial", "%+.1f m/s" % n.rad, CYAN))
-    lignes.append(("Combustion", fmt_duree(duree) if assez else "Δv insuffisant",
+        lignes.append((t("   prograde"), "%+.1f m/s" % n.pro, VERT))
+        lignes.append((t("   radial"), "%+.1f m/s" % n.rad, CYAN))
+    lignes.append((t("Combustion"), fmt_duree(duree) if assez else t("Δv insuffisant"),
                    BLANC if assez else ROUGE))
     # une poussée longue perd de l'efficacité : la direction du nœud est figée, pas la vitesse
     periode = mod_manoeuvre.periode_au_noeud(v, n)
     if assez and periode is not None and duree > 0.06 * periode:
-        lignes.append(("Combustion longue", "surveille l'orbite", ORANGE))
-    lignes.append(("Allumage", compte_a_rebours(n.t - duree / 2.0 - u.t), JAUNE))
-    lignes.append(("Nœud", compte_a_rebours(n.t - u.t), GRIS))
+        lignes.append((t("Combustion longue"), t("surveille l'orbite"), ORANGE))
+    lignes.append((t("Allumage"), compte_a_rebours(n.t - duree / 2.0 - u.t), JAUNE))
+    lignes.append((t("Nœud"), compte_a_rebours(n.t - u.t), GRIS))
     if v.plan:
         o, c = v.plan[0].orbite, v.plan[0].corps
-        lignes.append(("Après : Pe", fmt_distance(o.rp - c.R), BLEU_PLAN))
-        lignes.append(("Après : Ap", fmt_distance(o.ra - c.R) if o.elliptique else "évasion", BLEU_PLAN))
+        lignes.append((t("Après : Pe"), fmt_distance(o.rp - c.R), BLEU_PLAN))
+        lignes.append((t("Après : Ap"), fmt_distance(o.ra - c.R) if o.elliptique else t("évasion"), BLEU_PLAN))
         for tr in v.plan[1:]:
             if tr.entree:
-                lignes.append(("Rencontre", tr.corps.nom, VERT))
+                lignes.append((t("Rencontre"), t(tr.corps.nom), VERT))
                 break
     if u.approche_plan is not None and u.cible is not None:
         d = u.approche_plan[1] - (u.cible.R if isinstance(u.cible, Corps) else 0.0)
-        lignes.append(("Approche prévue", fmt_distance(max(0.0, d)), BLEU_PLAN))
+        lignes.append((t("Approche prévue"), fmt_distance(max(0.0, d)), BLEU_PLAN))
     return lignes, 46 + 19 * len(lignes) + 36
 
 
@@ -95,29 +96,29 @@ class Hud:
         b = [Bouton((l // 2 - 100, 8, 28, 24), "<", lambda: u.changer_acceleration(-1)),
              Bouton((l // 2 + 72, 8, 28, 24), ">", lambda: u.changer_acceleration(+1))]
         x, y = l - 160, h - 38
-        for libelle, action in (("Menu (Échap)", lambda: sc.ouvrir("pause")),
-                                ("Aide (H)", lambda: sc.ouvrir("aide")),
-                                ("Missions (M)", lambda: sc.ouvrir("missions"))):
+        for libelle, action in ((t("Menu (Échap)"), lambda: sc.ouvrir("pause")),
+                                (t("Aide (H)"), lambda: sc.ouvrir("aide")),
+                                (t("Missions (M)"), lambda: sc.ouvrir("missions"))):
             b.append(Bouton((x, y, 150, 28), libelle, action))
             y -= 32
         if a is not None:
             y -= 6
             if u.peut_recuperer(a):
-                b.append(Bouton((x, y, 150, 28), "Récupérer", sc.recuperer))
+                b.append(Bouton((x, y, 150, 28), t("Récupérer"), sc.recuperer))
                 y -= 32
             if a.jonctions():
-                b.append(Bouton((x, y, 150, 28), "Désamarrer (U)", u.desamarrer))
+                b.append(Bouton((x, y, 150, 28), t("Désamarrer (U)"), u.desamarrer))
                 y -= 32
-                b.append(Bouton((x, y, 150, 28), "Carburant", lambda: sc.ouvrir("carburant")))
+                b.append(Bouton((x, y, 150, 28), t("Carburant"), lambda: sc.ouvrir("carburant")))
                 y -= 32
             if any(p.parachute == "plie" for p in a.pieces) and a.corps.atm_h > 0 and a.mode != "pose":
-                b.append(Bouton((x, y, 150, 28), "Parachute (P)", u.ouvrir_parachute))
+                b.append(Bouton((x, y, 150, 28), t("Parachute (P)"), u.ouvrir_parachute))
                 y -= 32
             if sc.cam.hors_vaisseau(u):
-                b.append(Bouton((x, y, 150, 28), "◎ Vaisseau (F)", sc.recentrer, 13))
+                b.append(Bouton((x, y, 150, 28), t("◎ Vaisseau (F)"), sc.recentrer, 13))
                 y -= 32
             if reglages.AIDES:
-                lib = "Pilote : %s" % u.pilote.nom if u.pilote is not None else "Pilote auto (G)"
+                lib = t("Pilote : {nom}", nom=u.pilote.nom) if u.pilote is not None else t("Pilote auto (G)")
                 b.append(Bouton((x, y, 150, 28), lib, self.basculer_menu_pilote, 13,
                                 allume=u.pilote is not None or self.menu_pilote))
                 self.ancre_pilote = (x + 150, y)
@@ -132,26 +133,26 @@ class Hud:
                                 allume=(a.sas == mode)))
             def sas_manoeuvre():
                 a.sas = "manoeuvre"
-            b.append(Bouton((x0, y0 + 62, 62, 26), "MAN", sas_manoeuvre, 13,
+            b.append(Bouton((x0, y0 + 62, 62, 26), t("MAN"), sas_manoeuvre, 13,
                             actif=a.noeud is not None, allume=(a.sas == "manoeuvre")))
-            b.append(Bouton((x0 + 66, y0 + 62, 62, 26), "RCS (R)", sc.basculer_rcs, 13, allume=a.rcs))
-            b.append(Bouton((x0 + 132, y0 + 62, 128, 26), "Vit. : %s (V)" % a.ref_vitesse,
+            b.append(Bouton((x0 + 66, y0 + 62, 62, 26), t("RCS (R)"), sc.basculer_rcs, 13, allume=a.rcs))
+            b.append(Bouton((x0 + 132, y0 + 62, 128, 26), t("Vit. : {ref} (V)", ref=a.ref_vitesse),
                             sc.changer_reference, 13))
-            b.append(Bouton((x0 + 264, y0 + 62, 62, 26), {"auto": "Cam. auto", "horizon": "Horizon",
-                                                          "nord": "Nord"}[sc.cam.mode], sc.changer_camera, 12))
+            b.append(Bouton((x0 + 264, y0 + 62, 62, 26), t({"auto": "Cam. auto", "horizon": "Horizon",
+                                                          "nord": "Nord"}[sc.cam.mode]), sc.changer_camera, 12))
             if a.noeud is not None:                       # boutons du panneau de manœuvre
                 nx, ny, nl = NOEUD_RECT
                 yb = ny + infos_noeud(u, a)[1] - 32
-                for dx, larg, lib, act in ((0, 56, "− tour", lambda: u.decaler_noeud(-1)),
-                                           (60, 56, "+ tour", lambda: u.decaler_noeud(+1)),
-                                           (120, 74, "Exécuter" if reglages.AIDES else "Filer",
+                for dx, larg, lib, act in ((0, 56, t("− tour"), lambda: u.decaler_noeud(-1)),
+                                           (60, 56, t("+ tour"), lambda: u.decaler_noeud(+1)),
+                                           (120, 74, t("Exécuter") if reglages.AIDES else t("Filer"),
                                             (lambda: u.lancer_pilote(mod_pilote.ExecuterNoeud()))
                                             if reglages.AIDES else u.filer_au_noeud),
-                                           (198, 52, "Effacer", u.supprimer_noeud)):
+                                           (198, 52, t("Effacer"), u.supprimer_noeud)):
                     b.append(Bouton((nx + 10 + dx, yb, larg, 26), lib, act, 12))
             from .vaisseau import indice_decoupleur_bas
             if indice_decoupleur_bas(a.pieces):
-                b.append(Bouton((150, h - 40, 120, 28), "Étage (Espace)", u.separer_etage, 13))
+                b.append(Bouton((150, h - 40, 120, 28), t("Étage (Espace)"), u.separer_etage, 13))
         self.boutons = b
 
     # ----------------------------------------------------------------- dessin
@@ -183,20 +184,20 @@ class Hud:
         r = hypot(x, y)
         panneau(surf, (10, 10, 270, 188))
         texte(surf, a.nom, (20, 16), 17, BLANC, gras=True)
-        texte(surf, "%s · %s" % (c.nom, u.situation(a)), (20, 38), 13, CYAN)
+        texte(surf, "%s · %s" % (t(c.nom), u.situation(a)), (20, 38), 13, CYAN)
         rvx, rvy = u.vitesse_reference(a)
         w = c.vitesse_rotation
         v_vert = ((vx + w * y) * x + (vy - w * x) * y) / r
         o = a.orbite if a.mode != "pose" else None
-        lignes = [("Altitude", fmt_distance(r - c.R - a.geometrie().bas if a.mode != "pose" else 0.0)),
-                  ("Vitesse (%s)" % a.ref_vitesse, fmt_vitesse(hypot(rvx, rvy))),
-                  ("Vit. verticale", fmt_vitesse(v_vert))]
+        lignes = [(t("Altitude"), fmt_distance(r - c.R - a.geometrie().bas if a.mode != "pose" else 0.0)),
+                  (t("Vitesse ({ref})", ref=a.ref_vitesse), fmt_vitesse(hypot(rvx, rvy))),
+                  (t("Vit. verticale"), fmt_vitesse(v_vert))]
         if o is not None and not o.degeneree:
-            lignes.append(("Apoapside", fmt_distance(o.ra - c.R) if o.elliptique else "évasion"))
-            lignes.append(("Périapside", fmt_distance(o.rp - c.R)))
+            lignes.append((t("Apoapside"), fmt_distance(o.ra - c.R) if o.elliptique else t("évasion")))
+            lignes.append((t("Périapside"), fmt_distance(o.rp - c.R)))
             if o.elliptique:
-                lignes.append(("Temps → Ap", fmt_duree(o.delai_apoapside(u.t))))
-            lignes.append(("Temps → Pe", fmt_duree(o.delai_periapside(u.t))))
+                lignes.append((t("Temps → Ap"), fmt_duree(o.delai_apoapside(u.t))))
+            lignes.append((t("Temps → Pe"), fmt_duree(o.delai_periapside(u.t))))
         yy = 60
         for nom, val in lignes:
             texte(surf, nom, (20, yy), 14, GRIS)
@@ -205,42 +206,43 @@ class Hud:
         m = None if u.tutoriel else mission_suggeree(u)       # pas d'objectif pendant un tutoriel
         if m is not None:
             panneau(surf, (10, 204, 270, 44), alpha=170)
-            texte(surf, "Objectif : " + m.titre, (20, 208), 13, JAUNE, gras=True)
-            texte(surf, m.description[:44] + ("…" if len(m.description) > 44 else ""), (20, 226), 12, GRIS)
+            texte(surf, t("Objectif : ") + t(m.titre), (20, 208), 13, JAUNE, gras=True)
+            desc = t(m.description)
+            texte(surf, desc[:44] + ("…" if len(desc) > 44 else ""), (20, 226), 12, GRIS)
 
     def _menu_pilote(self, surf, u, souris, l, h):
         """Liste des aides utilisables maintenant (bouton PILOTE, ou touche G)."""
         if not self.menu_pilote or not reglages.AIDES or u.actif is None:
             self.menu_pilote = False
             return
-        t = self.POPUP
-        larg, hb, pas = t["largeur"] + 70, t["h_bouton"], t["pas"]
+        cfg = self.POPUP
+        larg, hb, pas = cfg["largeur"] + 70, cfg["h_bouton"], cfg["pas"]
         actions = mod_pilote.actions(u, u.actif)
         haut = 40 + pas * max(1, len(actions))
         ax, ay = getattr(self, "ancre_pilote", (l - 10, 60))
         x = min(max(ax - larg, 4), l - larg - 4)
         y = min(max(ay - haut - 6 if ay > h / 2 else ay + 50, 4), h - haut - 4)
         panneau(surf, (x, y, larg, haut), alpha=240)
-        texte(surf, "PILOTE AUTOMATIQUE", (x + 10, y + 8), t["police"] - 2, CYAN, gras=True)
+        texte(surf, t("PILOTE AUTOMATIQUE"), (x + 10, y + 8), cfg["police"] - 2, CYAN, gras=True)
         if not actions:
-            texte(surf, "Rien à faire d'automatique ici", (x + 10, y + 38), t["police"] - 3, GRIS)
+            texte(surf, t("Rien à faire d'automatique ici"), (x + 10, y + 38), cfg["police"] - 3, GRIS)
         for k, (lib, act) in enumerate(actions):
             def faire(act=act):
                 act()
                 self.menu_pilote = False
-            b = Bouton((x + 8, y + 34 + pas * k, larg - 16, hb), lib, faire, t["police"] - 3)
+            b = Bouton((x + 8, y + 34 + pas * k, larg - 16, hb), lib, faire, cfg["police"] - 3)
             b.dessiner(surf, souris)
             self.boutons_popup.append(b)
 
     def _atterrissage(self, surf, u, a, rect, amarrage=True):
         """Panneau d'aide à l'atterrissage (en descente), ou au docking (cible proche)."""
         self.alerte = False
-        titre, lignes = "ATTERRISSAGE", lignes_atterrissage(u, a)
+        titre, lignes = t("ATTERRISSAGE"), lignes_atterrissage(u, a)
         if not lignes and amarrage:
-            titre, lignes = "AMARRAGE", lignes_amarrage(u, a)
+            titre, lignes = t("AMARRAGE"), lignes_amarrage(u, a)
         if not lignes:
             return
-        self.alerte = any(t == "MAINTENANT" for _, t, _ in lignes)      # bip d'alerte (écran de vol)
+        self.alerte = any(v == t("MAINTENANT") for _, v, _ in lignes)      # bip d'alerte (écran de vol)
         x, y, larg = rect
         petit = larg < 260
         panneau(surf, (x, y, larg, 40 + 20 * len(lignes)))
@@ -256,7 +258,7 @@ class Hud:
         lignes, haut = infos_noeud(u, a)
         x, y, larg = NOEUD_RECT
         panneau(surf, (x, y, larg, haut))
-        texte(surf, "NŒUD DE MANŒUVRE", (x + 10, y + 12), 14, BLEU_PLAN, gras=True)
+        texte(surf, t("NŒUD DE MANŒUVRE"), (x + 10, y + 12), 14, BLEU_PLAN, gras=True)
         yy = y + 40
         for nom, val, coul in lignes:
             texte(surf, nom, (x + 10, yy), 13, GRIS)
@@ -269,14 +271,14 @@ class Hud:
         pygame.draw.rect(surf, GRIS_FONCE, (22, h - 122, 16, 100), 1)
         hg = int(98 * a.gaz)
         pygame.draw.rect(surf, ORANGE, (23, h - 23 - hg, 14, hg))
-        texte(surf, "GAZ", (30, h - 20), 10, GRIS, ancre="hc")
+        texte(surf, t("GAZ"), (30, h - 20), 10, GRIS, ancre="hc")
         # carburant de l'étage, monergol
         carb, cap = a.carburant_actif()
-        titre = "Carburant (étage)"
+        titre = t("Carburant (étage)")
         if a.carburant_boosters()[1] > 0:                  # les boosters brûlent : leur jauge d'abord
-            (carb, cap), titre = a.carburant_boosters(), "Carburant (boosters)"
+            (carb, cap), titre = a.carburant_boosters(), t("Carburant (boosters)")
         for k, (nom, val, maxi, coul) in enumerate(((titre, carb, cap, VERT),
-                                                    ("Monergol RCS", a.mono(), sum(p.m.mono for p in a.pieces), CYAN))):
+                                                    (t("Monergol RCS"), a.mono(), sum(p.m.mono for p in a.pieces), CYAN))):
             yy = h - 124 + k * 34
             texte(surf, nom, (52, yy), 12, GRIS)
             texte(surf, "%s kg" % fmt_nombre(val), (268, yy), 12, BLANC, ancre="hd")
@@ -286,8 +288,8 @@ class Hud:
         etages = a_etages = None
         from .vaisseau import statistiques_etages
         etages = statistiques_etages(a.pieces)
-        texte(surf, "Δv étage %s   total %s m/s" % (fmt_nombre(etages[0]["dv"]) if etages else "0",
-                                                     fmt_nombre(sum(e["dv"] for e in etages))),
+        texte(surf, t("Δv étage {etage}   total {total} m/s", etage=fmt_nombre(etages[0]["dv"]) if etages else "0",
+                                                     total=fmt_nombre(sum(e["dv"] for e in etages))),
               (52, h - 56), 13, BLANC)
 
     def _cadran(self, surf, u, cam, a, cx, cy, R=54, legende=True):
@@ -338,7 +340,7 @@ class Hud:
         pygame.draw.polygon(surf, BLANC, [bout, (bout[0] - ex * 12 - ey * 6, bout[1] - ey * 12 + ex * 6),
                                           (bout[0] - ex * 12 + ey * 6, bout[1] - ey * 12 - ex * 6)])
         if legende:
-            texte(surf, "SAS", (cx, cy + R + 8), 10, GRIS, ancre="hc")
+            texte(surf, t("SAS"), (cx, cy + R + 8), 10, GRIS, ancre="hc")
 
     def _temps(self, surf, u, l):
         panneau(surf, (l // 2 - 110, 4, 220, 50))
@@ -403,28 +405,28 @@ class Hud:
         sc = self.scene
         actions = []
         if obj is not u.actif:
-            actions.append(("Cibler", lambda: u.cibler(obj)))
+            actions.append((t("Cibler"), lambda: u.cibler(obj)))
         if obj is u.cible:
-            actions.append(("Ne plus cibler", lambda: u.cibler(None)))
-        actions.append(("Centrer la vue", lambda: sc.centrer_sur(obj)))
+            actions.append((t("Ne plus cibler"), lambda: u.cibler(None)))
+        actions.append((t("Centrer la vue"), lambda: sc.centrer_sur(obj)))
         if not isinstance(obj, Corps) and obj is not u.actif and obj.controlable():
-            actions.append(("Contrôler", lambda: sc.controler(obj)))
+            actions.append((t("Contrôler"), lambda: sc.controler(obj)))
         if obj is u.actif and obj.noeud is None and obj.mode != "pose":
-            actions.append(("Nœud de manœuvre", sc.noeud_par_defaut))
-        t = self.POPUP
-        larg, hb, pas = t["largeur"], t["h_bouton"], t["pas"]
+            actions.append((t("Nœud de manœuvre"), sc.noeud_par_defaut))
+        cfg = self.POPUP
+        larg, hb, pas = cfg["largeur"], cfg["h_bouton"], cfg["pas"]
         haut = 50 + pas * len(actions)
         px = min(max(px + 12, 4), l - larg - 4)
         py = min(max(py - 10, 4), h - haut - 4)
         panneau(surf, (px, py, larg, haut), alpha=235)
-        texte(surf, obj.nom, (px + 10, py + 6), t["police"], BLANC, gras=True)
+        texte(surf, t(obj.nom), (px + 10, py + 6), cfg["police"], BLANC, gras=True)
         if isinstance(obj, Corps):
             info = "g %.2f m/s² · R %s" % (obj.g, fmt_distance(obj.R))
         else:
-            info = "%s · %s" % (obj.type(), obj.corps.nom)
+            info = "%s · %s" % (t(obj.type()), t(obj.corps.nom))
         texte(surf, info, (px + 10, py + 27), 12, GRIS)
         for k, (lib, act) in enumerate(actions):
-            b = Bouton((px + 8, py + 46 + pas * k, larg - 16, hb), lib, act, t["police"] - 3)
+            b = Bouton((px + 8, py + 46 + pas * k, larg - 16, hb), lib, act, cfg["police"] - 3)
             b.dessiner(surf, souris)
             self.boutons_popup.append(b)
 
@@ -433,32 +435,32 @@ def lignes_cible(u, a):
     """Lignes (nom, valeur, couleur) du panneau de droite : fonds, cible, rencontre."""
     lignes = []
     if not u.bac_a_sable:
-        lignes.append(("Fonds", fmt_nombre(u.fonds), JAUNE))
+        lignes.append((t("Fonds"), fmt_nombre(u.fonds), JAUNE))
     c = u.cible
     if c is not None:
-        lignes.append(("Cible", c.nom, MAGENTA))
+        lignes.append((t("Cible"), t(c.nom), MAGENTA))
         if a is not None:
             ax, ay = u.position_absolue(a)
             cx, cy = u.position_absolue(c)
             avx, avy = u.vitesse_absolue(a)
             cvx, cvy = u.vitesse_absolue(c)
             d = hypot(cx - ax, cy - ay) - (c.R if isinstance(c, Corps) else 0.0)
-            lignes.append(("Distance", fmt_distance(d), BLANC))
-            lignes.append(("Vit. relative", fmt_vitesse(hypot(cvx - avx, cvy - avy)), BLANC))
+            lignes.append((t("Distance"), fmt_distance(d), BLANC))
+            lignes.append((t("Vit. relative"), fmt_vitesse(hypot(cvx - avx, cvy - avy)), BLANC))
             if d > 1:
                 rapp = -((cx - ax) * (cvx - avx) + (cy - ay) * (cvy - avy)) / hypot(cx - ax, cy - ay)
-                lignes.append(("Rapprochement", fmt_vitesse(rapp), VERT if rapp >= 0 else ORANGE))
+                lignes.append((t("Rapprochement"), fmt_vitesse(rapp), VERT if rapp >= 0 else ORANGE))
         if u.approche is not None:
             tm, d = u.approche[0], u.approche[1]
             d -= c.R if isinstance(c, Corps) else 0.0
-            lignes.append(("Approche mini", fmt_distance(max(0.0, d)), MAGENTA))
-            lignes.append(("   dans", fmt_duree(tm - u.t), GRIS))
+            lignes.append((t("Approche mini"), fmt_distance(max(0.0, d)), MAGENTA))
+            lignes.append((t("   dans"), fmt_duree(tm - u.t), GRIS))
     if a is not None and a.troncons:
         for tr in a.troncons[1:]:
             if tr.entree:
-                lignes.append(("Rencontre", tr.corps.nom, VERT))
-                lignes.append(("   dans", fmt_duree(tr.t0 - u.t), GRIS))
-                lignes.append(("   périapside", fmt_distance(tr.orbite.rp - tr.corps.R), VERT))
+                lignes.append((t("Rencontre"), t(tr.corps.nom), VERT))
+                lignes.append((t("   dans"), fmt_duree(tr.t0 - u.t), GRIS))
+                lignes.append((t("   périapside"), fmt_distance(tr.orbite.rp - tr.corps.R), VERT))
                 break
     return lignes
 
@@ -471,7 +473,7 @@ def lignes_atterrissage(u, v):
     out = []
     for nom, val, alerte in infos:
         if isinstance(val, str):
-            txt = val
+            txt = t(val)
         elif nom == "Altitude":
             txt = fmt_distance(max(0.0, val))
         elif nom.startswith("Vit"):
@@ -481,10 +483,10 @@ def lignes_atterrissage(u, v):
         elif nom == "Inclinaison":
             txt = "%.0f°" % val
         elif nom == "Freinage dans" and val <= 1.0:
-            txt = "MAINTENANT"
+            txt = t("MAINTENANT")
         else:
             txt = fmt_duree(val)
-        out.append((nom, txt, ROUGE if alerte else (JAUNE if nom == "Freinage dans" else BLANC)))
+        out.append((t(nom), txt, ROUGE if alerte else (JAUNE if nom == "Freinage dans" else BLANC)))
     return out
 
 
@@ -496,7 +498,7 @@ def lignes_amarrage(u, v):
     out = []
     for nom, val, alerte in infos:
         if isinstance(val, str):
-            txt = val
+            txt = t(val)
         elif nom.startswith("Distance"):
             txt = fmt_distance(val)
         elif nom == "Alignement":
@@ -505,5 +507,5 @@ def lignes_amarrage(u, v):
             txt = "%+.1f m" % val
         else:
             txt = fmt_vitesse(val)
-        out.append((nom, txt, ROUGE if alerte else BLANC))
+        out.append((t(nom), txt, ROUGE if alerte else BLANC))
     return out

@@ -16,6 +16,7 @@ from .constantes import ACCELERATIONS, MIROIR_X
 from .orbite import angle_pi, TAU
 from .trajectoire import approche_minimale
 from . import manoeuvre as mod_man
+from .textes import t
 
 
 def poussee_max(v):
@@ -75,10 +76,10 @@ class ExecuterNoeud(Programme):
         else:
             self.but, self.energie_visee = "energie", o.energie
 
-    def _fin(self, u, v, message="Manœuvre exécutée"):
+    def _fin(self, u, v, message=None):
         v.gaz = 0.0
         u.supprimer_noeud()
-        u.dire(message, (120, 230, 140), 4)
+        u.dire(message if message is not None else t("Manœuvre exécutée"), (120, 230, 140), 4)
         return False
 
     def piloter(self, u, v):
@@ -167,7 +168,7 @@ class MiseEnOrbite(Programme):
                 v.gaz = 0.0
                 self.phase = "croisiere"
             elif poussee_max(v) <= 0.0 and v.delta_v() < 1.0:
-                u.dire("Pilote : plus de carburant pour atteindre l'orbite", (255, 150, 60), 5)
+                u.dire(t("Pilote : plus de carburant pour atteindre l'orbite"), (255, 150, 60), 5)
                 return False
         elif self.phase == "croisiere":             # on sort de l'atmosphère, nez en avant
             v.sas, v.gaz = "pro", 0.0
@@ -181,7 +182,7 @@ class MiseEnOrbite(Programme):
             if not self.circularisation.piloter(u, v):
                 o = v.orbite
                 ok = o is not None and o.elliptique and o.rp - c.R > c.atm_h + 500.0
-                u.dire("Pilote : en orbite !" if ok else "Pilote : orbite incomplète", (120, 230, 140), 5)
+                u.dire(t("Pilote : en orbite !") if ok else t("Pilote : orbite incomplète"), (120, 230, 140), 5)
                 return False
         return True
 
@@ -195,18 +196,18 @@ def planifier_circularisation(u, v, silencieux=False):
         return False
     o = v.troncons[0].orbite
     if o.elliptique and o.ra < 1e18:
-        t, r = u.t + o.delai_apoapside(u.t), o.ra
+        instant, r = u.t + o.delai_apoapside(u.t), o.ra
     else:
         d = o.delai_periapside(u.t)
         if d is None or d < 0:
             if not silencieux:
-                u.dire("Circularisation impossible : le périapside est passé", (255, 150, 60), 4)
+                u.dire(t("Circularisation impossible : le périapside est passé"), (255, 150, 60), 4)
             return False
-        t, r = u.t + d, o.rp
+        instant, r = u.t + d, o.rp
     vitesse = sqrt(max(0.0, o.mu * (2.0 / r - 1.0 / o.a)))
-    u.placer_noeud(t, pro=sqrt(o.mu / r) - vitesse)
+    u.placer_noeud(instant, pro=sqrt(o.mu / r) - vitesse)
     if not silencieux:
-        u.dire("Nœud de circularisation posé (%+.0f m/s)" % (sqrt(o.mu / r) - vitesse), (110, 200, 235), 4)
+        u.dire(t("Nœud de circularisation posé ({dv:+.0f} m/s)", dv=sqrt(o.mu / r) - vitesse), (110, 200, 235), 4)
     return True
 
 
@@ -254,7 +255,7 @@ def _chercher(u, v, cible, parent, candidats):
 def planifier_transfert(u, v, cible):
     """Pose le nœud de départ vers une lune du corps actuel, ou vers une planète voisine."""
     if v.mode == "pose" or not v.troncons or not v.troncons[0].orbite.elliptique:
-        u.dire("Transfert : il faut d'abord être en orbite", (255, 150, 60), 4)
+        u.dire(t("Transfert : il faut d'abord être en orbite"), (255, 150, 60), 4)
         return False
     o, c = v.troncons[0].orbite, v.corps
     periode = o.periode
@@ -267,24 +268,25 @@ def planifier_transfert(u, v, cible):
     elif c.parent is not None and cible.parent is c.parent and cible is not c:
         meilleur, attente = _transfert_planete(u, v, o, c, cible)
     else:
-        u.dire("Transfert direct impossible vers %s depuis %s" % (cible.nom, c.nom), (255, 150, 60), 5)
+        u.dire(t("Transfert direct impossible vers {vers} depuis {de}", vers=t(cible.nom), de=t(c.nom)), (255, 150, 60), 5)
         return False
     if meilleur is None:
-        u.dire("Transfert : aucune trajectoire trouvée", (255, 150, 60), 4)
+        u.dire(t("Transfert : aucune trajectoire trouvée"), (255, 150, 60), 4)
         return False
-    _, t, dv, rencontre, d = meilleur
+    _, instant, dv, rencontre, d = meilleur
     for _ in range(2):                                      # affinage du Δv au plus près
-        mieux = _chercher(u, v, cible, cible.parent, [(t, dv + k * 0.5) for k in range(-12, 13)])
+        mieux = _chercher(u, v, cible, cible.parent, [(instant, dv + k * 0.5) for k in range(-12, 13)])
         if mieux is not None and mieux[0] < meilleur[0]:
             meilleur = mieux
-        _, t, dv, rencontre, d = meilleur
-    u.placer_noeud(t, pro=dv)
-    quand = "" if attente is None else " (fenêtre de tir dans %.1f j)" % (attente / 86400.0)
+        _, instant, dv, rencontre, d = meilleur
+    u.placer_noeud(instant, pro=dv)
+    quand = "" if attente is None else t(" (fenêtre de tir dans {j:.1f} j)", j=attente / 86400.0)
     if rencontre:
-        u.dire("Transfert vers %s planifié%s : %+.0f m/s" % (cible.nom, quand, dv), (120, 230, 140), 6)
+        u.dire(t("Transfert vers {corps} planifié{quand} : {dv:+.0f} m/s",
+                 corps=t(cible.nom), quand=quand, dv=dv), (120, 230, 140), 6)
     else:
-        u.dire("Transfert vers %s : passage à %.0f km, affine le nœud à la main%s" % (
-            cible.nom, d / 1e3, quand), (255, 200, 90), 6)
+        u.dire(t("Transfert vers {corps} : passage à {km:.0f} km, affine le nœud à la main{quand}",
+                 corps=t(cible.nom), km=d / 1e3, quand=quand), (255, 200, 90), 6)
     return True
 
 
@@ -296,7 +298,7 @@ def planifier_retour(u, v):
     p = c.parent
     if p is None or p.parent is None or v.mode == "pose" or not v.troncons \
             or not v.troncons[0].orbite.elliptique:
-        u.dire("Retour : il faut être en orbite autour d'une lune", (255, 150, 60), 5)
+        u.dire(t("Retour : il faut être en orbite autour d'une lune"), (255, 150, 60), 5)
         return False
     o = v.troncons[0].orbite
     vise = p.R + (0.4 * p.atm_h if p.atm_h > 0 else 0.03 * p.R)
@@ -312,7 +314,7 @@ def planifier_retour(u, v):
     notes = [e for e in (essai(u.t + 30.0 + k * o.periode / 48.0, v_ech * (1.02 + 0.08 * j))
                          for k in range(48) for j in range(12)) if e is not None]
     if not notes:
-        u.dire("Retour : aucune trajectoire trouvée", (255, 150, 60), 5)
+        u.dire(t("Retour : aucune trajectoire trouvée"), (255, 150, 60), 5)
         return False
     meilleur = min(notes)
     for pas_t, pas_dv in ((o.periode / 200.0, 0.02 * v_ech), (o.periode / 1000.0, 0.004 * v_ech)):
@@ -320,10 +322,10 @@ def planifier_retour(u, v):
         notes = [e for e in (essai(t0 + i * pas_t, dv0 + j * pas_dv)
                              for i in range(-4, 5) for j in range(-4, 5)) if e is not None]
         meilleur = min(notes + [meilleur])
-    _, t, dv, rp = meilleur
-    u.placer_noeud(t, pro=dv)
-    u.dire("Retour vers %s planifié : périapside à %.1f km (%+.0f m/s)" % (p.nom, (rp - p.R) / 1e3, dv),
-           (120, 230, 140), 6)
+    _, instant, dv, rp = meilleur
+    u.placer_noeud(instant, pro=dv)
+    u.dire(t("Retour vers {corps} planifié : périapside à {km:.1f} km ({dv:+.0f} m/s)",
+             corps=t(p.nom), km=(rp - p.R) / 1e3, dv=dv), (120, 230, 140), 6)
     return True
 
 
@@ -403,12 +405,12 @@ class Atterrissage(Programme):
             self.etager_si_vide(u, v)
             if poussee_max(v) <= 0.0:
                 v.gaz = 0.0
-                u.dire("Pilote : plus de carburant pour se poser", (255, 150, 60), 5)
+                u.dire(t("Pilote : plus de carburant pour se poser"), (255, 150, 60), 5)
                 return False
             return True
         a_max = f / v.masse()
         if a_max <= pesanteur * 1.05:
-            u.dire("Pilote : moteur trop faible pour se poser ici", (255, 150, 60), 5)
+            u.dire(t("Pilote : moteur trop faible pour se poser ici"), (255, 150, 60), 5)
             return False
         if self.phase is None:
             tr = v.troncons[0] if v.troncons else None
@@ -512,7 +514,7 @@ class Amarrage(Programme):
             return self._fin(u, v)
         geo = geometrie_amarrage(u, v, c, self.ports)
         if geo is None:
-            return self._fin(u, v, "Amarrage : il faut un port libre de chaque côté")
+            return self._fin(u, v, t("Amarrage : il faut un port libre de chaque côté"))
         self.ports = geo["ports"]
         v.sas = "pilote"
         if geo["distance"] > self.PROCHE:
@@ -534,7 +536,7 @@ class Amarrage(Programme):
         u.commandes.avant = u.commandes.cote = 0
         f = poussee_max(v)
         if f <= 0.0:
-            return self._fin(u, v, "Amarrage : plus de carburant dans l'étage en cours")
+            return self._fin(u, v, t("Amarrage : plus de carburant dans l'étage en cours"))
         self.pousse = besoin > (0.3 if self.pousse else 1.5)     # hystérésis : moins d'allers-retours
         if self.pousse:
             cap = atan2(dvy, dvx)
@@ -610,7 +612,7 @@ def planifier_rendez_vous(u, v, cible):
     o = v.troncons[0].orbite if v.troncons else None
     oc = cible.orbite if cible.mode == "rails" else None
     if o is None or oc is None or not o.elliptique or not oc.elliptique or cible.corps is not c:
-        u.dire("Rendez-vous : il faut être en orbite autour du même corps que la cible", (255, 150, 60), 5)
+        u.dire(t("Rendez-vous : il faut être en orbite autour du même corps que la cible"), (255, 150, 60), 5)
         return None
     mu = o.mu
     x, y, vx, vy = o.etat(u.t)
@@ -655,7 +657,7 @@ def planifier_rendez_vous(u, v, cible):
             candidats += [(depart + i * 15.0, dv0 + j * 1.0) for i in range(-2, 3) for j in range(-3, 4)]
     notes = [e for e in (essai(t, dv) for t, dv in candidats) if e is not None]
     if not notes:
-        u.dire("Rendez-vous : aucune trajectoire trouvée", (255, 150, 60), 5)
+        u.dire(t("Rendez-vous : aucune trajectoire trouvée"), (255, 150, 60), 5)
         return None
     meilleur = min(notes)
     for pas_t, pas_dv in ((o.periode / 240.0, 0.5), (o.periode / 1200.0, 0.1)):   # affinage
@@ -663,10 +665,10 @@ def planifier_rendez_vous(u, v, cible):
         notes = [e for e in (essai(t0 + i * pas_t, dv0 + j * pas_dv)
                              for i in range(-4, 5) for j in range(-4, 5)) if e is not None]
         meilleur = min(notes + [meilleur])
-    note, t, dv, tm = meilleur
-    u.placer_noeud(t, pro=dv)
-    u.dire("Rendez-vous planifié : passage à %.1f km de %s (%+.0f m/s)" % (
-        (note - 0.02 * abs(dv)) / 1e3, cible.nom, dv), (120, 230, 140), 6)
+    note, instant, dv, tm = meilleur
+    u.placer_noeud(instant, pro=dv)
+    u.dire(t("Rendez-vous planifié : passage à {km:.1f} km de {corps} ({dv:+.0f} m/s)", km=(
+        note - 0.02 * abs(dv)) / 1e3, corps=t(cible.nom), dv=dv), (120, 230, 140), 6)
     return tm
 
 
@@ -703,7 +705,7 @@ class RendezVous(Programme):
             d = hypot(e1[0] - e2[0], e1[1] - e2[1])
             if d < 5000.0 or u.t > self.t_rencontre - 20.0:
                 if d > 30_000.0:
-                    u.dire("Rendez-vous manqué (%.0f km) : relance-le pour corriger" % (d / 1e3), (255, 150, 60), 6)
+                    u.dire(t("Rendez-vous manqué ({km:.0f} km) : relance-le pour corriger", km=d / 1e3), (255, 150, 60), 6)
                     return False
                 u.accel = 0
                 u.cible = c
@@ -722,36 +724,38 @@ def actions(u, v):
     from .corps import Corps
     out = []
     if u.pilote is not None:
-        out.append(("Arrêter le pilote (%s)" % u.pilote.nom, u.arreter_pilote))
+        out.append((t("Arrêter le pilote ({nom})", nom=t(u.pilote.nom)), u.arreter_pilote))
     if v is None:
         return out
     c = v.corps
     o = v.orbite if v.mode != "pose" else None
     bas = v.mode == "pose" or (o is not None and o.rp < c.R + c.atm_h + 500.0)
     if bas and poussee_max(v) + sum(n * m.m.poussee for m, r, n in v.moteurs()) > 0:
-        out.append(("Mise en orbite", lambda: u.lancer_pilote(MiseEnOrbite())))
+        out.append((t("Mise en orbite"), lambda: u.lancer_pilote(MiseEnOrbite())))
     if v.noeud is not None:
-        out.append(("Exécuter la manœuvre", lambda: u.lancer_pilote(ExecuterNoeud())))
+        out.append((t("Exécuter la manœuvre"), lambda: u.lancer_pilote(ExecuterNoeud())))
     if v.mode != "pose" and not getattr(c, "gazeux", False) and \
             sum(n * m.m.poussee for m, r, n in v.moteurs()) > 0:
-        out.append(("Atterrissage automatique", lambda: u.lancer_pilote(Atterrissage())))
+        out.append((t("Atterrissage automatique"), lambda: u.lancer_pilote(Atterrissage())))
     if o is not None and not o.degeneree and v.noeud is None:
-        out.append(("Circulariser", lambda: planifier_circularisation(u, v)))
+        out.append((t("Circulariser"), lambda: planifier_circularisation(u, v)))
     if o is not None and o.elliptique and v.noeud is None and c.parent is not None \
             and c.parent.parent is not None:                  # autour d'une lune : rentrer à la maison
-        out.append(("Retour vers %s" % ("la Terre" if c.parent.nom == "Terre" else c.parent.nom),
+        corps_retour = "la Terre" if c.parent.nom == "Terre" else c.parent.nom
+        out.append((t("Retour vers {corps}", corps=t(corps_retour)),
                     lambda: planifier_retour(u, v)))
     cible = u.cible
     if cible is not None and not isinstance(cible, Corps) and cible.corps is c and v.mode != "pose" \
             and cible.mode != "pose" and v.ports_libres() and cible.ports_libres():
         e1, e2 = u.etat(v), u.etat(cible)
         if hypot(e1[0] - e2[0], e1[1] - e2[1]) < 5000.0:
-            out.append(("Amarrage automatique", lambda: u.lancer_pilote(Amarrage(cible))))
+            out.append((t("Amarrage automatique"), lambda: u.lancer_pilote(Amarrage(cible))))
         elif o is not None and o.elliptique and v.noeud is None and cible.mode == "rails":
-            out.append(("Rendez-vous et amarrage", lambda: u.lancer_pilote(RendezVous(cible))))
+            out.append((t("Rendez-vous et amarrage"), lambda: u.lancer_pilote(RendezVous(cible))))
     if isinstance(cible, Corps) and o is not None and o.elliptique and v.noeud is None and \
             (cible.parent is c or (c.parent is not None and cible.parent is c.parent and cible is not c)):
-        out.append(("Transfert vers %s" % cible.nom, lambda: planifier_transfert(u, v, cible)))
+        out.append((t("Transfert vers {corps}", corps=t(cible.nom)),
+                    lambda: planifier_transfert(u, v, cible)))
     return out
 
 

@@ -14,6 +14,7 @@ from math import atan2, cos, sin, sqrt
 import pygame
 
 from . import reglages, sons
+from .textes import t
 from .interface import texte, panneau, Bouton, police
 from .orbite import Orbite, angle_pi
 from .pieces import CATALOGUE
@@ -44,7 +45,7 @@ def formater(txt, tactile):
     txt = re.sub(r"\[\[(.*?)\|(.*?)\]\]", lambda m: m.group(1) if reglages.AIDES else m.group(2), txt)
     txt = re.sub(r"\s{2,}", " ", txt).strip()
     for cle, (pc, doigt) in COMMANDES.items():
-        txt = txt.replace("{%s}" % cle, doigt if tactile else pc)
+        txt = txt.replace("{%s}" % cle, t(doigt) if tactile else t(pc))
     # une commande insérée en début de phrase prend la majuscule (« … toi. Clique dessus »)
     return re.sub(r"(^|[.!?]\s+)([a-zàâçéèêëîïôûùüÿ])", lambda m: m.group(1) + m.group(2).upper(), txt)
 
@@ -202,7 +203,7 @@ def _depart_retour(app, u):
 def _depart_hangar(app, u):
     app.aller_hangar()
     app.scene._vider()
-    app.scene.nom = "Ma fusée"
+    app.scene.nom = t("Ma fusée")
 
 
 def _memoriser_pieces(tuto, sc):
@@ -217,18 +218,19 @@ def _aide_tete(sc):
     """Indice si la capsule manque, ou n'est pas tout en haut."""
     cles = _cles(sc)
     if "capsule" in cles and cles[0] != "capsule":
-        return "La capsule doit être tout en haut : sélectionne-la, puis monte-la avec ▲."
+        return t("La capsule doit être tout en haut : sélectionne-la, puis monte-la avec ▲.")
     if cles and "capsule" not in cles:
-        return "Il manque encore la capsule : {TAPER} « Capsule Mk1 » dans la liste de gauche."
+        return t("Il manque encore la capsule : {TAPER} « Capsule Mk1 » dans la liste de gauche.")
     return None
 
 
 def _aide_lancer(sc):
     """Si la fusée n'est pas prête (une étape sautée...), on dit ce qui manque."""
     if not any(CATALOGUE[c].commande for c in _cles(sc)):
-        return "Il manque la tête de la fusée : ajoute une Capsule Mk1 tout en haut (rubrique Commande)."
+        return t("Il manque la tête de la fusée : ajoute une Capsule Mk1 tout en haut (rubrique Commande).")
     bloquants = [txt for txt, bloquant in sc.problemes() if bloquant]
-    return ("Pas encore prêt : " + bloquants[0][0].lower() + bloquants[0][1:] + ".") if bloquants else None
+    return t("Pas encore prêt : {txt}", txt=bloquants[0][0].lower() + bloquants[0][1:] + ".") \
+            if bloquants else None
 
 
 SCENARIOS = [
@@ -481,24 +483,27 @@ class Tutoriel:
         mission = self.s.genre == "mission"
         indice = None
         if self.echec:
-            titre, couleur = "OUPS !", (255, 110, 90)
-            corps = "Ta fusée s'est écrasée. Pas de panique : ça arrive à tous les astronautes !"
+            titre, couleur = t("OUPS !"), (255, 110, 90)
+            corps = t("Ta fusée s'est écrasée. Pas de panique : ça arrive à tous les astronautes !")
             if self.s.conseil:
-                corps += " Conseil : " + self.s.conseil
+                corps += t("conseil_prefixe") + t(self.s.conseil)
         elif self.termine:
             suite = self._suivant_scenario()
             if mission:
-                titre, couleur = "MISSION ACCOMPLIE !", (120, 230, 140)
-                corps = "Mission « %s » réussie." % self.s.titre + (
-                    " La suivante : « %s »." % suite.titre if suite else " Tu as rejoué toutes les missions !")
+                titre, couleur = t("MISSION ACCOMPLIE !"), (120, 230, 140)
+                corps = t("Mission « {titre} » réussie.", titre=t(self.s.titre)) + (
+                    t(" La suivante : « {titre} ».", titre=t(suite.titre)) if suite
+                    else t(" Tu as rejoué toutes les missions !"))
             else:
-                titre, couleur = "BRAVO !", ORANGE
-                corps = "Tuto « %s » terminé." % self.s.titre + (
-                    " Le suivant : « %s »." % suite.titre if suite else " Tu as fait tous les tutos !")
+                titre, couleur = t("BRAVO !"), ORANGE
+                corps = t("Tuto « {titre} » terminé.", titre=t(self.s.titre)) + (
+                    t(" Le suivant : « {titre} ».", titre=t(suite.titre)) if suite
+                    else t(" Tu as fait tous les tutos !"))
         else:
-            titre, couleur = "%s %d/%d · %s" % ("MISSION" if mission else "TUTO", self.k + 1,
-                                                len(self.s.etapes), self.s.titre), ORANGE
-            corps = e.texte_tactile if (tactile and e.texte_tactile) else e.texte
+            titre, couleur = t("{genre} {k}/{n} · {titre}",
+                               genre=t("MISSION") if mission else t("TUTO"), k=self.k + 1,
+                               n=len(self.s.etapes), titre=t(self.s.titre)), ORANGE
+            corps = t(e.texte_tactile) if (tactile and e.texte_tactile) else t(e.texte)
             if e.aide is not None:
                 try:
                     indice = e.aide(self, scene)
@@ -525,21 +530,22 @@ class Tutoriel:
         entrees = []
         page = "scenarios" if mission else "tutos"
         if self.echec:
-            entrees.append(("Réessayer", lambda: demarrer(app, self.s.ident)))
-            entrees.append(("Quitter", lambda: app.aller_menu(page)))
+            entrees.append((t("Réessayer"), lambda: demarrer(app, self.s.ident)))
+            entrees.append((t("Quitter"), lambda: app.aller_menu(page)))
         elif self.termine:
             suite = self._suivant_scenario()
             if suite is not None:
-                entrees.append(("Mission suivante ›" if mission else "Tuto suivant ›",
+                entrees.append((t("Mission suivante ›") if mission else t("Tuto suivant ›"),
                                 lambda s=suite: demarrer(app, s.ident)))
-            entrees.append(("Liste des missions" if mission else "Liste des tutos", lambda: app.aller_menu(page)))
+            entrees.append((t("Liste des missions") if mission else t("Liste des tutos"),
+                            lambda: app.aller_menu(page)))
         else:
-            entrees.append(("Suivant ›" if e.fini is None else "Passer", self.suivant))
-            entrees.append(("Recommencer", lambda: demarrer(app, self.s.ident)))
-            entrees.append(("Quitter", lambda: app.aller_menu(page)))
+            entrees.append((t("Suivant ›") if e.fini is None else t("Passer"), self.suivant))
+            entrees.append((t("Recommencer"), lambda: demarrer(app, self.s.ident)))
+            entrees.append((t("Quitter"), lambda: app.aller_menu(page)))
         marge = 34 if tactile else 22
         if sum(f.size(lib)[0] + marge + 8 for lib, _ in entrees) > larg - 16:
-            entrees = [("↺" if lib == "Recommencer" else lib, act) for lib, act in entrees]   # place comptée
+            entrees = [("↺" if lib == t("Recommencer") else lib, act) for lib, act in entrees]
         x = x0 + larg - 12
         for lib, act in entrees:
             w = f.size(lib)[0] + marge
@@ -552,7 +558,7 @@ class Tutoriel:
         # le bouton à utiliser clignote
         if not (self.termine or self.echec) and e.bouton:
             for lib in (e.bouton if isinstance(e.bouton, tuple) else (e.bouton,)):
-                b = next((b for b in cherche if b.libelle.lower().startswith(lib.lower())), None)
+                b = next((b for b in cherche if b.libelle.lower().startswith(t(lib).lower())), None)
                 if b is not None:
                     k = 0.5 + 0.5 * sin(pygame.time.get_ticks() / 140.0)
                     pygame.draw.rect(surf, JAUNE, b.rect.inflate(8 + 8 * k, 8 + 8 * k), 3, border_radius=9)

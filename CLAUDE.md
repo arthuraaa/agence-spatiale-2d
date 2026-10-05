@@ -160,6 +160,5 @@ compilé d'un APK « donneur » (ancien, non aligné sur 16 Ko) et `verifier_paq
 - Écran « À propos / Licences » dans Options (LGPL de pygame, voir `LICENCES.md`).
 - Tablettes : en API 36, Android ignore l'orientation imposée sur grand écran ; vérifier le
   jeu en portrait.
-- Version anglaise du jeu (textes) pour la fiche Play internationale.
 - Chaque année vers août : relever `android.api` (exigence Google Play) et
   `tests/test_version.py`.

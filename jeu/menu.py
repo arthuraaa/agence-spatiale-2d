@@ -140,9 +140,9 @@ class SceneMenu:
             b = Bouton((x, y, lb, hb), "", lambda ident=s.ident: demarrer(self.app, ident), 15)
             b.dessiner(surf, souris)
             self.boutons.append(b)
-            nom = ("%d · %s" % (s.annee, s.titre)) if s.annee else ("%d. %s" % (i + 1, s.titre))
+            nom = ("%d · %s" % (s.annee, t(s.titre))) if s.annee else ("%d. %s" % (i + 1, t(s.titre)))
             texte(surf, nom, (x + 12, y + 7), 15, BLANC, gras=True)
-            texte(surf, s.resume, (x + 12, y + 28), 12, GRIS)
+            texte(surf, t(s.resume), (x + 12, y + 28), 12, GRIS)
             if s.ident in reglages.TUTOS_FAITS:
                 texte(surf, "✓", (x + lb - 12, y + 12), 20, (120, 230, 140), gras=True, ancre="hd")
         b = Bouton((l // 2 - 90, y0 + lignes * (hb + 8) + 4, 180, 40), t("retour"),

@@ -11,6 +11,7 @@ from .interface import (texte, texte_multiligne, panneau, Bouton, fmt_nombre, fm
                         fmt_duree, police)
 from .tactile import Doigts
 from . import sons, plateforme
+from .textes import t
 
 HORS_ECRAN = (-100, -100)          # « position de la souris » sur écran tactile : pas de survol
 
@@ -23,7 +24,7 @@ class SceneHangar:
         self.app = app
         self.u = app.univers
         self.cles = copie_plan(app.modele)    # la fusée en cours (plan : clés du haut vers le bas)
-        self.nom = app.nom_modele
+        self.nom = t(app.nom_modele)
         self.selection = None                 # indice de la pièce, ou (indice, rang dans son booster)
         self.defilement = 0
         self.edition_nom = False
@@ -43,25 +44,25 @@ class SceneHangar:
         if not self.u.piece_debloquee(cle):
             ident = CATALOGUE[cle].debloque_par
             titre = next((m.titre for m in MISSIONS if m.ident == ident), ident)
-            self.message = "Pièce verrouillée : accomplis la mission « %s »." % titre
+            self.message = t("Pièce verrouillée : accomplis la mission « {titre} ».", titre=titre)
             return
         if len(self.cles) >= 40:
             return
         sel = self.selection
         if cle == "decoupleur_radial":                   # accroche une paire de boosters
             if not isinstance(sel, int):
-                self.message = "Choisis d'abord la pièce de la fusée qui portera les boosters."
+                self.message = t("Choisis d'abord la pièce de la fusée qui portera les boosters.")
                 return
             if self._booster(sel) is not None:
-                self.message = "Cette pièce porte déjà une paire de boosters."
+                self.message = t("Cette pièce porte déjà une paire de boosters.")
                 return
             self.cles[sel] = [self.cles[sel], ["decoupleur_radial"]]
             self.selection = (sel, 0)
-            self.message = "Boosters accrochés : ajoute-leur un réservoir, puis un moteur."
+            self.message = t("Boosters accrochés : ajoute-leur un réservoir, puis un moteur.")
             return
         if isinstance(sel, tuple):                       # on remplit le booster sélectionné
             if CATALOGUE[cle].forme not in ("reservoir", "moteur", "coiffe"):
-                self.message = "Un booster ne prend que des réservoirs, des moteurs et une coiffe."
+                self.message = t("Un booster ne prend que des réservoirs, des moteurs et une coiffe.")
                 return
             i, j = sel
             self._booster(i).insert(j + 1, cle)
@@ -124,7 +125,7 @@ class SceneHangar:
 
     def charger_modele(self, k):
         nom, _, cles = MODELES[k]
-        self.cles, self.nom = copie_plan(cles), nom
+        self.cles, self.nom = copie_plan(cles), t(nom)
         self.selection, self.menu_modeles, self.message = None, False, ""
 
     def problemes(self):
@@ -132,20 +133,20 @@ class SceneHangar:
         out = []
         pieces = pieces_depuis_plan(self.cles)
         if not any(p.m.commande for p in pieces):
-            out.append(("Il faut une pièce de commande (capsule, sonde...)", True))
+            out.append((t("Il faut une pièce de commande (capsule, sonde...)"), True))
         if any(not self.u.piece_debloquee(c) for c in toutes_les_cles(self.cles)):
-            out.append(("Contient des pièces pas encore débloquées", True))
+            out.append((t("Contient des pièces pas encore débloquées"), True))
         if any(p.laterales and moteur_et_reservoirs(p.laterales)[0] is None for p in pieces):
-            out.append(("Un booster n'a pas de moteur tout en bas", False))
+            out.append((t("Un booster n'a pas de moteur tout en bas"), False))
         prix = prix_plan(self.cles)
         if not self.u.bac_a_sable and prix > self.u.fonds:
-            out.append(("Fonds insuffisants (%s)" % fmt_nombre(prix), True))
+            out.append((t("Fonds insuffisants ({prix})", prix=fmt_nombre(prix)), True))
         if pieces:
             et = statistiques_etages(pieces)
             if indice_moteur(pieces) is None:
-                out.append(("Aucun moteur actif tout en bas de la pile", False))
+                out.append((t("Aucun moteur actif tout en bas de la pile"), False))
             elif et[0]["twr"] < 1.0:
-                out.append(("Poussée trop faible pour décoller (TWR %.2f)" % et[0]["twr"], False))
+                out.append((t("Poussée trop faible pour décoller (TWR {twr})", twr=et[0]["twr"]), False))
         return out
 
     def editer_nom(self, oui):
@@ -163,7 +164,7 @@ class SceneHangar:
     def lancer(self):
         if self.cles and not any(b for _, b in self.problemes()):
             self.app.modele, self.app.nom_modele = copie_plan(self.cles), self.nom
-            self.app.lancer(self.nom or "Vaisseau", self.cles)
+            self.app.lancer(self.nom or t("Vaisseau"), self.cles)
 
     def quitter_hangar(self):
         self.app.modele, self.app.nom_modele = copie_plan(self.cles), self.nom
@@ -299,7 +300,7 @@ class SceneHangar:
         self.zones_catalogue = []
         souris = HORS_ECRAN if self.tactile else pygame.mouse.get_pos()
         for cat in CATEGORIES:
-            texte(surf, cat.upper(), (14, y + 6), 13, CYAN, gras=True)
+            texte(surf, t(cat).upper(), (14, y + 6), 13, CYAN, gras=True)
             y += H_TITRE
             for m in CATALOGUE.values():
                 if m.categorie != cat:
@@ -325,16 +326,16 @@ class SceneHangar:
                     pygame.draw.polygon(surf, couleur, [(zone.centerx + x * ech, zone.bottom - 1 - yy * ech)
                                                         for x, yy in pts])
                 surf.set_clip(ancien)
-                texte(surf, m.nom, (62, y + 2), 14, BLANC if ok else GRIS_FONCE)
-                detail = "%s · %s" % (fmt_masse(m.masse + m.carburant + m.mono),
-                                      fmt_nombre(m.prix)) if ok else "verrouillée"
+                texte(surf, t(m.nom), (62, y + 2), 14, BLANC if ok else GRIS_FONCE)
+                detail = ("%s · %s" % (fmt_masse(m.masse + m.carburant + m.mono),
+                                        fmt_nombre(m.prix)) if ok else t("verrouillée"))
                 texte(surf, detail, (62, y + 19), 11, GRIS if ok else GRIS_FONCE)
                 if y > 44:
                     self.zones_catalogue.append((rect, m.cle))
                 y += H_LIGNE
         panneau(surf, (0, 0, self.lg, 44), alpha=255, bord=False, couleur=(10, 14, 24))
-        texte(surf, "PIÈCES", (14, 12), 17, BLANC, gras=True)
-        aide = "tape = ajouter · glisse = défiler" if self.tactile else "clic = ajouter sous la sélection"
+        texte(surf, t("PIÈCES"), (14, 12), 17, BLANC, gras=True)
+        aide = t("tape = ajouter · glisse = défiler") if self.tactile else t("clic = ajouter sous la sélection")
         if self.lg >= 300:
             texte(surf, aide, (self.lg - 10, 17), 11, GRIS, ancre="hd")
 
@@ -343,8 +344,8 @@ class SceneHangar:
         self.gauche_etiquette = None
         cx = (self.lg + l - self.ld) // 2
         if not self.cles:
-            texte(surf, "Clique sur une pièce à gauche pour commencer", (cx, h // 2), 16, GRIS, ancre="c")
-            texte(surf, "(on construit du nez vers le moteur)", (cx, h // 2 + 24), 13, GRIS_FONCE, ancre="c")
+            texte(surf, t("Clique sur une pièce à gauche pour commencer"), (cx, h // 2), 16, GRIS, ancre="c")
+            texte(surf, t("(on construit du nez vers le moteur)"), (cx, h // 2 + 24), 13, GRIS_FONCE, ancre="c")
             return
         pieces = pieces_depuis_plan(self.cles)
         v = Vaisseau(self.nom, pieces, None)
@@ -372,11 +373,12 @@ class SceneHangar:
             if phase is not None and pieces[k] is next((p for p in pieces[::-1] if p.laterales), None):
                 e = etages[phase]
                 xg = cx - (ecart + l_b / 2) * ech - 8
-                self.gauche_etiquette = xg - police(12).size("boosters · Δv %s" % fmt_nombre(e["dv"]))[0]
+                etiq = t("boosters · Δv {dv}", dv=fmt_nombre(e["dv"]))
+                self.gauche_etiquette = xg - police(12).size(etiq)[0]
                 ym = oy - 0.5 * (segs[0][0] + segs[-1][1]) * ech
-                texte(surf, "Étage %d" % (phase + 1), (xg, ym - 16), 13, ORANGE if phase == 0 else GRIS,
+                texte(surf, t("Étage {n}", n=phase + 1), (xg, ym - 16), 13, ORANGE if phase == 0 else GRIS,
                       gras=True, ancre="hd")
-                texte(surf, "boosters · Δv %s" % fmt_nombre(e["dv"]), (xg, ym + 1), 12, BLANC, ancre="hd")
+                texte(surf, etiq, (xg, ym + 1), 12, BLANC, ancre="hd")
         for i, ((yh, yb), larg) in enumerate(zip(g.segments, g.largeurs)):
             self.zones_pile.append((pygame.Rect(cx - 70, oy - yh * ech, 140, max(4, (yh - yb) * ech)), i))
         # accolades des étages (la phase des boosters est notée à côté d'eux)
@@ -389,9 +391,9 @@ class SceneHangar:
             place = l - self.ld - x - 12                   # largeur disponible pour le texte
             coul = ORANGE if k == 0 else GRIS
             pygame.draw.lines(surf, coul, False, [(x - 6, y0 + 2), (x, y0 + 2), (x, y1 - 2), (x - 6, y1 - 2)])
-            complet = "Δv %s m/s · TWR %.2f" % (fmt_nombre(e["dv"]), e["twr"] if k == 0 else e["twr_vide"])
-            court = "Δv %s" % fmt_nombre(e["dv"])
-            texte(surf, "Étage %d" % (k + 1) if place >= 60 else str(k + 1), (x + 8, (y0 + y1) / 2 - 16), 13,
+            complet = t("Δv {dv} m/s · TWR {twr}", dv=fmt_nombre(e["dv"]), twr=e["twr"] if k == 0 else e["twr_vide"])
+            court = t("Δv {dv}", dv=fmt_nombre(e["dv"]))
+            texte(surf, t("Étage {n}", n=k + 1) if place >= 60 else str(k + 1), (x + 8, (y0 + y1) / 2 - 16), 13,
                   coul, gras=True)
             if e["moteur"] and place >= 44:
                 texte(surf, complet if place >= police(12).size(complet)[0] else court,
@@ -400,30 +402,30 @@ class SceneHangar:
     def _stats(self, surf, l, h):
         x = l - self.ld
         panneau(surf, (x, 0, self.ld, h), alpha=255, bord=False)
-        texte(surf, "HANGAR", (x + 16, 12), 17, BLANC, gras=True)
+        texte(surf, t("HANGAR"), (x + 16, 12), 17, BLANC, gras=True)
         if not self.u.bac_a_sable:
-            texte(surf, "Fonds : %s" % fmt_nombre(self.u.fonds), (l - 14, 15), 14, JAUNE, ancre="hd")
+            texte(surf, t("Fonds : {v}", v=fmt_nombre(self.u.fonds)), (l - 14, 15), 14, JAUNE, ancre="hd")
         else:
-            texte(surf, "Bac à sable", (l - 14, 15), 14, GRIS, ancre="hd")
+            texte(surf, t("Bac à sable"), (l - 14, 15), 14, GRIS, ancre="hd")
         self.zone_nom = pygame.Rect(x + 14, 50, self.ld - 28, 30)
         pygame.draw.rect(surf, (10, 14, 24), self.zone_nom, border_radius=4)
         pygame.draw.rect(surf, CYAN if self.edition_nom else GRIS_FONCE, self.zone_nom, 1, border_radius=4)
         curseur = "|" if self.edition_nom and pygame.time.get_ticks() % 900 < 450 else ""
-        texte(surf, (self.nom or "Nom du vaisseau") + curseur, (x + 22, 56), 15, BLANC if self.nom else GRIS_FONCE)
+        texte(surf, (self.nom or t("Nom du vaisseau")) + curseur, (x + 22, 56), 15, BLANC if self.nom else GRIS_FONCE)
         pieces = pieces_depuis_plan(self.cles)
         masse = Vaisseau("", pieces, None).masse()
         etages = statistiques_etages(pieces) if pieces else []
-        lignes = [("Pièces", str(len(toutes_les_cles(self.cles)))), ("Masse au décollage", fmt_masse(masse)),
-                  ("Hauteur", "%.1f m" % sum(p.m.h for p in pieces)),
-                  ("Prix", fmt_nombre(prix_plan(self.cles))),
-                  ("Δv total (vide)", "%s m/s" % fmt_nombre(sum(e["dv"] for e in etages)))]
+        lignes = [(t("Pièces"), str(len(toutes_les_cles(self.cles)))), (t("Masse au décollage"), fmt_masse(masse)),
+                  (t("Hauteur"), "%.1f m" % sum(p.m.h for p in pieces)),
+                  (t("Prix"), fmt_nombre(prix_plan(self.cles))),
+                  (t("Δv total (vide)"), "%s m/s" % fmt_nombre(sum(e["dv"] for e in etages)))]
         y = 94
         for nom, val in lignes:
             texte(surf, nom, (x + 16, y), 14, GRIS)
             texte(surf, val, (l - 16, y), 14, BLANC, ancre="hd")
             y += 21
         y += 6
-        texte(surf, "ÉTAGES (ordre d'allumage)", (x + 16, y), 12, CYAN, gras=True)
+        texte(surf, t("ÉTAGES (ordre d'allumage)"), (x + 16, y), 12, CYAN, gras=True)
         y += 20
         for k, e in enumerate(etages[:5 if self.tactile else 7]):
             if e["moteur"]:
@@ -432,12 +434,12 @@ class SceneHangar:
                 if self.ld >= L_DROITE:                    # la durée de combustion, si la place le permet
                     txt += "   " + fmt_duree(e["duree"])
             else:
-                txt = "%d · (sans moteur)" % (k + 1)
+                txt = t("{n} · (sans moteur)", n=k + 1)
             texte(surf, txt, (x + 16, y), 12, BLANC if e["moteur"] else GRIS)
             y += 18
         y += 4
         if not self.tactile:
-            texte(surf, "Repères : orbite ≈ 1 050 m/s · Lune aller-retour ≈ 2 000 m/s", (x + 16, y), 11, GRIS)
+            texte(surf, t("Repères : orbite ≈ 1 050 m/s · Lune aller-retour ≈ 2 000 m/s"), (x + 16, y), 11, GRIS)
             y += 22
         pbs = self.problemes() if pieces else []
         for txt, bloquant in pbs:
@@ -448,31 +450,32 @@ class SceneHangar:
         if self._piece_selectionnee(pieces) is not None and not self.tactile:
             m = self._piece_selectionnee(pieces).m
             y += 6
-            texte(surf, m.nom, (x + 16, y), 14, CYAN, gras=True)
+            texte(surf, t(m.nom), (x + 16, y), 14, CYAN, gras=True)
             y += 20
             infos = []
             if m.poussee:
-                infos.append("Poussée %d kN · Isp %d s (vide) / %d s (sol)" % (m.poussee / 1000, m.isp_vide, m.isp_sol))
+                infos.append(t("Poussée {kn} kN · Isp {ispv} s (vide) / {isps} s (sol)",
+                               kn=m.poussee / 1000, ispv=m.isp_vide, isps=m.isp_sol))
             if m.carburant:
-                infos.append("Carburant %s kg" % fmt_nombre(m.carburant))
+                infos.append(t("Carburant {v} kg", v=fmt_nombre(m.carburant)))
             if m.description:
                 infos.append(m.description)
-            infos.append("Suppr ou ✕ = retirer · ↑ ↓ ou ▲ ▼ = déplacer")
-            for t in infos:
-                y = texte_multiligne(surf, t, (x + 16, y), self.ld - 32, 12, GRIS)
+            infos.append(t("Suppr ou ✕ = retirer · ↑ ↓ ou ▲ ▼ = déplacer"))
+            for info in infos:
+                y = texte_multiligne(surf, info, (x + 16, y), self.ld - 32, 12, GRIS)
         # boutons
         peut_lancer = bool(pieces) and not any(b for _, b in pbs)
         grand, petit = (46, 40) if self.tactile else (38, 28)
         by = h - 12 - grand
-        self.boutons.append(Bouton((x + 14, by, self.ld - 28, grand), "LANCER", self.lancer, 18,
+        self.boutons.append(Bouton((x + 14, by, self.ld - 28, grand), t("LANCER"), self.lancer, 18,
                                    actif=peut_lancer))
         by -= petit + 8
         demi = (self.ld - 36) // 2
-        self.boutons.append(Bouton((x + 14, by, demi, petit), "Modèles…", self._basculer_modeles, 15))
-        self.boutons.append(Bouton((x + 22 + demi, by, demi, petit), "Tout vider", self._vider, 15))
+        self.boutons.append(Bouton((x + 14, by, demi, petit), t("Modèles…"), self._basculer_modeles, 15))
+        self.boutons.append(Bouton((x + 22 + demi, by, demi, petit), t("Tout vider"), self._vider, 15))
         by -= petit + 6
         self.boutons.append(Bouton((x + 14, by, self.ld - 28, petit),
-                                   "Suivi des vols" if self.tactile else "Suivi des vols (Échap)",
+                                   t("Suivi des vols") if self.tactile else t("Suivi des vols (Échap)"),
                                    self.quitter_hangar, 15))
         if self.menu_modeles:
             hm = 16 + 44 * len(MODELES)
@@ -518,7 +521,7 @@ def dessiner_libelles_modeles(scene, surf):
     for k, (nom, desc, cles) in enumerate(MODELES):
         ok = all(scene.u.piece_debloquee(c) for c in toutes_les_cles(cles))
         prix = prix_plan(cles)
-        texte(surf, "%s  (%s)" % (nom, fmt_nombre(prix)), (mx + 18, my + 11 + 44 * k), 14,
+        texte(surf, "%s  (%s)" % (t(nom), fmt_nombre(prix)), (mx + 18, my + 11 + 44 * k), 14,
               BLANC if ok else GRIS_FONCE, gras=True)
-        texte(surf, desc if ok else "pièces pas encore débloquées", (mx + 18, my + 29 + 44 * k), 11,
+        texte(surf, t(desc) if ok else t("pièces pas encore débloquées"), (mx + 18, my + 29 + 44 * k), 11,
               GRIS if ok else GRIS_FONCE)
