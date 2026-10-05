@@ -3,6 +3,7 @@
 import os, sys
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+os.environ["AGENCE_LANGUE"] = "fr"          # ce test clique sur des libellés français
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
 from math import atan2, hypot, pi

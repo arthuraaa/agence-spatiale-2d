@@ -3,12 +3,13 @@
 import random
 from math import sin
 import pygame
-from .constantes import TITRE, BLANC, GRIS, CYAN, NOIR
+from .constantes import BLANC, GRIS, CYAN, NOIR
 from .interface import texte, Bouton
 from .rendu import disque, melange
 from .tactile import Doigts
 from .version import __version__
-from . import sauvegarde, plateforme, reglages, sons
+from .textes import t, NOMS_LANGUE
+from . import sauvegarde, plateforme, reglages, sons, textes
 
 
 class SceneMenu:
@@ -63,9 +64,8 @@ class SceneMenu:
             pygame.draw.polygon(surf, (90, 94, 104), [(fx - 9, fy + 40), (fx - 20, fy + 50), (fx - 9, fy + 20)])
             pygame.draw.polygon(surf, (90, 94, 104), [(fx + 9, fy + 40), (fx + 20, fy + 50), (fx + 9, fy + 20)])
 
-        texte(surf, TITRE.upper(), (l // 2, h * 0.17), 46, BLANC, gras=True, ancre="c")
-        texte(surf, "Construis, lance, mets en orbite, amarre, explore le système solaire",
-              (l // 2, h * 0.17 + 44), 16, CYAN, ancre="c")
+        texte(surf, t("nom_jeu").upper(), (l // 2, h * 0.17), 46, BLANC, gras=True, ancre="c")
+        texte(surf, t("sous_titre"), (l // 2, h * 0.17 + 44), 16, CYAN, ancre="c")
         app = self.app
         souris = pygame.mouse.get_pos()
         if self.vue == "tutos":
@@ -75,42 +75,49 @@ class SceneMenu:
         elif self.vue == "scenarios":
             self._liste_tutos(surf, l, h, souris, genre="mission")
         else:
-            entrees = [("Continuer la partie", app.continuer, sauvegarde.sauvegarde_existe()),
-                       ("Nouvelle carrière", lambda: app.nouvelle_partie(False), True),
-                       ("Bac à sable (tout débloqué)", lambda: app.nouvelle_partie(True), True),
+            entrees = [(t("continuer"), app.continuer, sauvegarde.sauvegarde_existe()),
+                       (t("nouvelle_carriere"), lambda: app.nouvelle_partie(False), True),
+                       (t("bac_a_sable"), lambda: app.nouvelle_partie(True), True),
                        (None, None, True),                          # Tutoriels | Scénarios (côte à côte)
-                       ("Options", lambda: setattr(self, "vue", "options"), True),
-                       ("Quitter", app.quitter, True)]
+                       (t("options"), lambda: setattr(self, "vue", "options"), True),
+                       (t("quitter"), app.quitter, True)]
             y0 = int(h * 0.36)
             self.boutons = [Bouton((l // 2 - 160, y0 + 52 * k, 320, 42), lib, act, 17, actif=ok)
                             for k, (lib, act, ok) in enumerate(entrees) if lib is not None]
             k = [e[0] for e in entrees].index(None)
-            self.boutons.append(Bouton((l // 2 - 160, y0 + 52 * k, 156, 42), "Tutoriels",
+            self.boutons.append(Bouton((l // 2 - 160, y0 + 52 * k, 156, 42), t("tutoriels"),
                                        lambda: setattr(self, "vue", "tutos"), 17))
-            self.boutons.append(Bouton((l // 2 + 4, y0 + 52 * k, 156, 42), "Scénarios",
+            self.boutons.append(Bouton((l // 2 + 4, y0 + 52 * k, 156, 42), t("scenarios"),
                                        lambda: setattr(self, "vue", "scenarios"), 17))
             for b in self.boutons:
                 b.dessiner(surf, souris)
-        pied = ("Échelle 1/100 · en vol, ☰ ouvre le menu (missions, aide, sauvegarde) · v%s" % __version__ if plateforme.TACTILE
-                else "Échelle 1/100 · H = aide en vol · F5 = sauvegarder")
+        pied = (t("pied_tactile", version=__version__) if plateforme.TACTILE
+                else t("pied_pc"))
         texte(surf, pied, (l // 2, h - 28), 13, GRIS, ancre="c")
 
     def _page_options(self, surf, l, h, souris):
-        """Son, aides au pilotage et triche. La triche elle-même s'utilise en vol."""
-        texte(surf, "OPTIONS", (l // 2, int(h * 0.30)), 20, BLANC, gras=True, ancre="c")
+        """Langue, son, aides au pilotage et triche. La triche elle-même s'utilise en vol."""
+        texte(surf, t("options_titre"), (l // 2, int(h * 0.30)), 20, BLANC, gras=True, ancre="c")
         y0 = int(h * 0.30) + 26
-        entrees = [("Son : %s" % reglages.NOMS_SON[reglages.SON], reglages.changer_son),
-                   ("Aides au pilotage : %s" % ("oui" if reglages.AIDES else "non"), reglages.basculer_aides),
-                   ("Triche en vol : %s" % ("autorisée" if reglages.TRICHE else "désactivée"),
+
+        def langue_suivante():
+            # auto -> français -> English -> auto
+            ordre = list(NOMS_LANGUE)
+            reglages.changer_langue(ordre[(ordre.index(reglages.LANGUE) + 1) % len(ordre)])
+
+        nom_langue = NOMS_LANGUE[reglages.LANGUE] if reglages.LANGUE else t("langue_auto")
+        entrees = [(t("choix_langue", nom=nom_langue), langue_suivante),
+                   (t("son", mode=t("son_" + reglages.SON)), reglages.changer_son),
+                   (t("aides_pilotage", etat=t("oui") if reglages.AIDES else t("non")), reglages.basculer_aides),
+                   (t("triche_options", etat=t("triche_autorisee") if reglages.TRICHE else t("triche_desactivee")),
                     reglages.basculer_triche)]
         self.boutons = [Bouton((l // 2 - 170, y0 + 50 * k, 340, 42), lib, act, 16)
                         for k, (lib, act) in enumerate(entrees)]
         yt = y0 + 50 * len(entrees) + 6
-        ou = "☰ puis Options, ou appui long sur l'horloge" if plateforme.TACTILE else "Échap puis Options, ou F12"
-        texte(surf, "La triche (revenir 30 s en arrière, plein, indestructible...) s'ouvre en vol :",
-              (l // 2, yt), 13, GRIS, ancre="hc")
+        ou = t("triche_ou_tactile") if plateforme.TACTILE else t("triche_ou_pc")
+        texte(surf, t("triche_intro"), (l // 2, yt), 13, GRIS, ancre="hc")
         texte(surf, ou + ".", (l // 2, yt + 18), 13, GRIS, ancre="hc")
-        self.boutons.append(Bouton((l // 2 - 90, yt + 44, 180, 40), "Retour",
+        self.boutons.append(Bouton((l // 2 - 90, yt + 44, 180, 40), t("retour"),
                                    lambda: setattr(self, "vue", "principal"), 16))
         for b in self.boutons:
             b.dessiner(surf, souris)
@@ -119,8 +126,7 @@ class SceneMenu:
         """Tutoriels (ou missions historiques), sur deux colonnes, cochés quand ils sont faits."""
         from .tutoriel import PAR_ID, demarrer
         SCENARIOS = [s for s in PAR_ID.values() if s.genre == genre]
-        titre = ("TUTORIELS : une mécanique à la fois" if genre == "tuto"
-                 else "SCÉNARIOS : rejoue les grandes missions")
+        titre = t("tutoriels_titre") if genre == "tuto" else t("scenarios_titre")
         texte(surf, titre, (l // 2, int(h * 0.30)), 20, BLANC, gras=True, ancre="c")
         cols = 2 if l >= 640 else 1
         lignes = (len(SCENARIOS) + cols - 1) // cols
@@ -139,7 +145,7 @@ class SceneMenu:
             texte(surf, s.resume, (x + 12, y + 28), 12, GRIS)
             if s.ident in reglages.TUTOS_FAITS:
                 texte(surf, "✓", (x + lb - 12, y + 12), 20, (120, 230, 140), gras=True, ancre="hd")
-        b = Bouton((l // 2 - 90, y0 + lignes * (hb + 8) + 4, 180, 40), "Retour",
+        b = Bouton((l // 2 - 90, y0 + lignes * (hb + 8) + 4, 180, 40), t("retour"),
                    lambda: setattr(self, "vue", "principal"), 16)
         b.dessiner(surf, souris)
         self.boutons.append(b)

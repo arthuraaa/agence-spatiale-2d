@@ -7,6 +7,7 @@ AIDES = True          # aides au pilotage : pilote automatique, assistants, atte
 SON = "tout"          # "tout" (bruitages + ambiance), "effets" (bruitages seuls) ou "aucun"
 TUTOS_FAITS = []      # identifiants des tutoriels terminés
 TRICHE = True         # la triche est proposée en vol (menu Options)
+LANGUE = ""           # "fr", "en", ou "" = langue du système (jeu/textes.py)
 NOMS_SON = {"tout": "tout", "sans_musique": "sans musique", "effets": "effets seuls", "aucun": "coupé"}
 
 
@@ -16,7 +17,7 @@ def _chemin():
 
 
 def charger():
-    global AIDES, SON, TUTOS_FAITS, TRICHE
+    global AIDES, SON, TUTOS_FAITS, TRICHE, LANGUE
     try:
         with open(_chemin(), encoding="utf-8") as f:
             d = json.load(f)
@@ -26,12 +27,14 @@ def charger():
     SON = d.get("son", "tout") if d.get("son") in NOMS_SON else "tout"
     TUTOS_FAITS = [t for t in d.get("tutos", []) if isinstance(t, str)]
     TRICHE = bool(d.get("triche", True))
+    LANGUE = d.get("langue", "") if d.get("langue", "") in ("", "fr", "en") else ""
 
 
 def _ecrire():
     try:
         with open(_chemin(), "w", encoding="utf-8") as f:
-            json.dump({"aides": AIDES, "son": SON, "tutos": TUTOS_FAITS, "triche": TRICHE}, f)
+            json.dump({"aides": AIDES, "son": SON, "tutos": TUTOS_FAITS, "triche": TRICHE,
+                       "langue": LANGUE}, f)
     except OSError:
         pass
 
@@ -59,4 +62,11 @@ def tuto_fait(ident):
 def basculer_triche():
     global TRICHE
     TRICHE = not TRICHE
+    _ecrire()
+
+
+def changer_langue(code):
+    """Change la langue du jeu ("fr", "en" ou "" = langue du système)."""
+    global LANGUE
+    LANGUE = code if code in ("", "fr", "en") else ""
     _ecrire()

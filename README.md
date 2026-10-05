@@ -373,7 +373,8 @@ jeu/vaisseau.py       pile de pièces : masse, centre de masse, moteur actif, Δ
 jeu/trajectoire.py    prédiction : tronçons d'orbite, changements de sphère d'influence, rencontres
 jeu/manoeuvre.py      nœuds de manœuvre : impulsion planifiée et trajectoire obtenue
 jeu/pilote.py         aides : pilote auto, circularisation, transferts, rendez-vous, amarrage
-jeu/reglages.py       réglages gardés d'une partie à l'autre (aides, son, tutoriels faits)
+jeu/reglages.py       réglages gardés d'une partie à l'autre (aides, son, tutoriels faits, langue)
+jeu/textes.py         textes du jeu en deux langues (fr/en), choisis dans les options
 jeu/sons.py           sons fabriqués par le code (boucles et bruitages), cache .wav
 jeu/musique.py        musique d'ambiance composée en direct selon l'humeur du moment
 jeu/triche.py         menu secret : photos de la partie (retour en arrière), plein, options

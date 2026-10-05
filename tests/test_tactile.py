@@ -10,6 +10,7 @@ import os, sys, random, subprocess, tempfile
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("AGENCE_ECRAN", "2400x1080")
+os.environ["AGENCE_LANGUE"] = "fr"          # ce test clique sur des libellés français
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from math import atan2, hypot, pi, cos, sin
 import pygame

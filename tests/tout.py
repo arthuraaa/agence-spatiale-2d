@@ -26,7 +26,7 @@ def main():
         fichiers = [f for f in fichiers if any(m in f for m in mots)]
     if "--rapide" in sys.argv:
         fichiers = [f for f in fichiers if f not in LONGS]
-    env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+    env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy", AGENCE_LANGUE="fr")
     echecs, debut = [], time.time()
     for nom in fichiers:
         t = time.time()

@@ -35,6 +35,7 @@ Android. Environ 9 000 lignes, tout en français. Objectif : **publication sur G
 | Jouer au clavier et à la souris | `python main.py` |
 | Interface du téléphone, à la souris | `python main.py --tactile` |
 | … au format d'un téléphone 20:9 | `AGENCE_ECRAN=2400x1080 python main.py --tactile` |
+| Jeu en anglais (ou en français) | `AGENCE_LANGUE=en python main.py` (ou choix dans Options) |
 | Tous les tests | `python tests/tout.py` (`--rapide` : sans les plus longs) |
 | Un fichier de tests | `python tests/test_boosters.py` (ou `python tests/tout.py boost`) |
 | Préparer Ubuntu (une fois) | `bash outils/android/preparer.sh` |
@@ -68,7 +69,8 @@ jeu/tutoriel.py         moteur des tutoriels ET des scénarios (bulle, étapes, 
 jeu/scenarios.py        missions historiques (Spoutnik, Vostok, Apollo 11, Apollo 13)
 jeu/triche.py           photos de la partie (retour 30 s), plein, mise en orbite
 jeu/sons.py, musique.py sons et musique fabriqués par le code (aucun fichier audio)
-jeu/reglages.py         réglages du joueur (reglages.json) : aides, son, triche, tutos faits
+jeu/reglages.py         réglages du joueur (reglages.json) : aides, son, triche, tutos faits, langue
+jeu/textes.py           textes du jeu en deux langues (fr/en) ; t("cle") choisit la langue active
 jeu/sauvegarde.py       sauvegarde JSON ; chemin_sauvegarde() = dossier où écrire
 jeu/plateforme.py       PC ou Android (sur_android()), mode tactile, taille logique de l'écran
 jeu/interface.py        texte, boutons, panneaux, formats     jeu/rendu.py   caméra et dessin
