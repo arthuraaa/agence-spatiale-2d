@@ -46,6 +46,23 @@ def test_couverture():
     assert not manquantes, "textes incomplets (fr/en) : %s" % manquantes
 
 
+def test_cles_utilisees():
+    """Chaque t("...") du code doit exister dans TOUT : une clé absente s'affiche
+    brute au joueur, accolades comprises (bug du panneau de carburant)."""
+    import glob, io, re
+    # clés dynamiques que le scan ne peut pas reconstruire ("Vit. %s" % ..., "son_" + ...)
+    dynamiques = {"Vit. %s", "son_"}
+    utilisees = set()
+    for chemin in glob.glob(os.path.join(RACINE, "jeu", "*.py")):
+        if chemin.endswith("textes.py"):
+            continue                       # ses exemples de docstring ne sont pas des clés
+        src = io.open(chemin, encoding="utf-8").read()
+        utilisees |= set(re.findall(r'\bt\(\s*"((?:[^"\\]|\\.)*)"', src))
+        utilisees |= set(re.findall(r"\bt\(\s*'((?:[^'\\]|\\.)*)'", src))
+    manquantes = sorted(c for c in utilisees - dynamiques if c not in textes.TOUT)
+    assert not manquantes, "clés de texte absentes du dictionnaire : %s" % manquantes
+
+
 def test_reglages_compatibles():
     """Une reglages.json sans champ « langue » (ancienne sauvegarde) doit rester lisible."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -91,6 +108,7 @@ if __name__ == "__main__":
     test_langues()
     test_gabarits()
     test_couverture()
+    test_cles_utilisees()
     test_reglages_compatibles()
     test_defaut_systeme()
     print("--- textes : OK")

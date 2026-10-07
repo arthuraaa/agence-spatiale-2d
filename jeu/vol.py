@@ -165,7 +165,7 @@ class SceneVol:
 
     def changer_son(self):
         reglages.changer_son()
-        self.u.dire(t("Son : {mode}", mode=t("son_" + reglages.SON)), CYAN, 3)
+        self.u.dire(t("son", mode=t("son_" + reglages.SON)), CYAN, 3)
 
     def basculer_aides(self):
         reglages.basculer_aides()
@@ -743,7 +743,7 @@ class SceneVol:
         u, a = self.u, self.u.actif
         oui = lambda x: t("oui") if x else t("non")
         carriere = not u.bac_a_sable
-        regl = [(t("Son : {mode}", mode=t("son_" + reglages.SON)), self.changer_son, True),
+        regl = [(t("son", mode=t("son_" + reglages.SON)), self.changer_son, True),
                 (t("aides_pilotage", etat=oui(reglages.AIDES)), self.basculer_aides, True)]
         tri = []
         if reglages.TRICHE:

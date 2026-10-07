@@ -617,7 +617,7 @@ class Amarrage(Programme):
         gx, gy = aa * dx + al * nx, aa * dy + al * ny
         a_rcs = v.poussee_rcs() / v.masse() if v.mono() > 0.0 else 0.0
         if a_rcs <= 0.0:
-            return self._fin(u, v, "Amarrage : plus de monergol pour le RCS")
+            return self._fin(u, v, t("Amarrage : plus de monergol pour le RCS"))
         ca, sa = cos(v.angle), sin(v.angle)
         avant = (gx * ca + gy * sa) / a_rcs
         cote = (-gx * sa + gy * ca) / a_rcs * (1.0 if MIROIR_X else -1.0)

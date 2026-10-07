@@ -616,6 +616,10 @@ TOUT = {
     "Retour vers {corps} planifié : périapside à {km:.1f} km ({dv:+.0f} m/s)": {"fr": "Retour vers {corps} planifié : périapside à {km:.1f} km ({dv:+.0f} m/s)", "en": "Return to {corps} planned: periapsis at {km:.1f} km ({dv:+.0f} m/s)"},
     "Pilote : plus de carburant pour se poser": {"fr": "Pilote : plus de carburant pour se poser", "en": "Autopilot: out of fuel to land"},
     "Pilote : moteur trop faible pour se poser ici": {"fr": "Pilote : moteur trop faible pour se poser ici", "en": "Autopilot: engine too weak to land here"},
+    "Pilote : on quitte {corps}, pas d'atterrissage ici": {"fr": "Pilote : on quitte {corps}, pas d'atterrissage ici", "en": "Autopilot: leaving {corps}, no landing here"},
+    "{nom} : {chef}": {"fr": "{nom} : {chef}", "en": "{nom}: {chef}"},
+    "Missions": {"fr": "Missions", "en": "Missions"},
+    "Options": {"fr": "Options", "en": "Options"},
     "Manœuvre exécutée": {"fr": "Manœuvre exécutée", "en": "Maneuver executed"},
     "Rendez-vous : il faut être en orbite autour du même corps que la cible": {"fr": "Rendez-vous : il faut être en orbite autour du même corps que la cible", "en": "Rendezvous: you must orbit the same body as the target"},
     "Rendez-vous : aucune trajectoire trouvée": {"fr": "Rendez-vous : aucune trajectoire trouvée", "en": "Rendezvous: no trajectory found"},
@@ -639,6 +643,7 @@ TOUT = {
     "Ma fusée": {"fr": "Ma fusée", "en": "My rocket"},
     "Amarrage : il faut un port libre de chaque côté": {"fr": "Amarrage : il faut un port libre de chaque côté", "en": "Docking: needs a free port on each side"},
     "Amarrage : plus de carburant dans l'étage en cours": {"fr": "Amarrage : plus de carburant dans l'étage en cours", "en": "Docking: out of fuel in the current stage"},
+    "Amarrage : plus de monergol pour le RCS": {"fr": "Amarrage : plus de monergol pour le RCS", "en": "Docking: out of monopropellant for the RCS"},
     "Jour {j}  {h:02d}:{m:02d}:{s:02d}": {"fr": "Jour {j}  {h:02d}:{m:02d}:{s:02d}", "en": "Day {j}  {h:02d}:{m:02d}:{s:02d}"},
 
     # ---- Missions de carrière, tutoriels et scénarios
