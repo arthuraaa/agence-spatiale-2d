@@ -96,8 +96,40 @@ def test_sas_redresse_pres_du_sol():
     assert ecart < 16.0
 
 
+def test_pilote_se_pose_sur_terre():
+    """Retour Terre avec le Pionnier : orbite (scriptée comme test_vol), désorbitation,
+    rentrée, parachute et atterrissage automatique. Le pilote ne doit brûler que la
+    désorbitation : sans parachute il épuisait tout le carburant en plein vol (bug)."""
+    import test_vol
+    app = jeu_main.Application(tactile=True)
+    reglages.AIDES = True
+    app.nouvelle_partie(True)
+    app.scene.charger_modele(0)
+    app.scene.lancer()
+    u, sc = app.univers, app.scene
+    v = u.actif
+    v.gaz = 1.0
+    for _ in range(60 * 14):                           # décollage vertical puis basculement
+        x, y, vx, vy = u.etat(v)
+        if u.altitude(v) > 250:
+            v.sas = "off"; v.angle = atan2(y, x) + 0.5; v.omega = 0
+        sc.maj(DT)
+    test_vol.mise_en_orbite(u, v)
+    u.accel = 0
+    u.lancer_pilote(pilote.Atterrissage())
+    k = 0
+    while v.mode != "pose" and not v.detruit and k < 60 * 60 * 40:
+        u.avancer(DT)
+        k += 1
+    assert v.mode == "pose" and not v.detruit, [m[0] for m in u.messages[-2:]]
+    print("   retour Terre automatique : posé, %.0f kg de carburant restants" % (
+        sum(p.carburant for p in v.pieces)))
+    assert sum(p.carburant for p in v.pieces) > 200, "le pilote a trop brûlé : il doit utiliser le parachute"
+
+
 if __name__ == "__main__":
     test_sas_redresse_pres_du_sol()
     test_joueur_se_pose()
     test_pilote_se_pose()
+    test_pilote_se_pose_sur_terre()
     print("--- atterrissage : OK")

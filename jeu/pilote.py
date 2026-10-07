@@ -399,8 +399,19 @@ class Atterrissage(Programme):
         v_vert = (svx * x + svy * y) / r
         vitesse = hypot(svx, svy)
         pesanteur = c.mu / (r * r)
+        # avec une atmosphère, le parachute fait le gros du freinage : on le déploie
+        # dès que c'est permis, et le moteur garde son carburant pour se poser en douceur
+        if (c.atm_h > 0.0 and vitesse <= 250.0 and u.altitude(v) < c.atm_h
+                and v.parachutes() and not v.parachute_ouvert()):
+            u.ouvrir_parachute()
         f = poussee_max(v)
         if f <= 0.0:
+            # plus de carburant : si un parachute peut encore finir la descente, on
+            # continue sans rien dire (le voile se pose en douceur) ; sinon on s'arrête
+            if v.parachute_ouvert() or (c.atm_h > 0.0 and v.parachutes()
+                                        and u.altitude(v) < c.atm_h):
+                v.gaz = 0.0
+                return True
             v.gaz = 1.0
             self.etager_si_vide(u, v)
             if poussee_max(v) <= 0.0:
@@ -429,7 +440,15 @@ class Atterrissage(Programme):
         arret = vitesse * vitesse / (2.0 * freinage_utile)
         if self.phase == "chute":
             v.gaz = 0.0
-            if hauteur <= 1.25 * arret + 40.0:
+            # avec un parachute à bord : ne rien brûler tant que la vitesse dépasse la
+            # limite d'ouverture ; on traverse l'atmosphère et l'air freine gratuitement
+            attend_voile = (c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0
+                            and u.altitude(v) < 3 * c.atm_h)
+            if attend_voile:
+                reste = hauteur / max(1.0, -v_vert)
+                u.accel = min(_accel_pour(reste), 3)
+            elif ((v.parachute_ouvert() and hauteur <= 300.0)
+                    or hauteur <= 1.25 * arret + 40.0):
                 self.phase = "freinage"
                 u.accel = 0
             else:
@@ -437,6 +456,9 @@ class Atterrissage(Programme):
                 u.accel = min(_accel_pour(reste), 3)
             return True
         u.accel = 0
+        if v.parachute_ouvert() and vitesse <= 6.0:
+            v.gaz = 0.0                                  # le voile descend tout seul, on économise
+            return True
         if hauteur > 12.0 or vitesse > 4.0:              # freinage : s'arrêter juste au-dessus du sol
             besoin = (vitesse * vitesse - 2.25) / (2.0 * max(hauteur - 4.0, 0.5)) + pesanteur
             v.gaz = max(0.0, min(1.0, besoin / a_max))
