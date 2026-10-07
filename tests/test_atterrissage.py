@@ -127,9 +127,68 @@ def test_pilote_se_pose_sur_terre():
     assert sum(p.carburant for p in v.pieces) > 200, "le pilote a trop brûlé : il doit utiliser le parachute"
 
 
+def en_orbite(u, nom_corps):
+    """Une capsule « Sélène » (moteur moustique) en orbite basse autour du corps donné."""
+    from math import sqrt
+    from jeu.univers import Orbite
+    c = u.par_nom[nom_corps]
+    v = u.lancer("Essai", ["capsule", "reservoir_m", "train", "moustique"])
+    r = c.R + c.atm_h + 5000.0
+    v.corps, v.mode = c, "rails"
+    v.x, v.y = r, 0.0
+    v.vx, v.vy = 0.0, sqrt(c.mu / r)
+    v.angle, v.omega, v.gaz = 0.0, 0.0, 0.0
+    v.orbite = Orbite(v.x, v.y, v.vx, v.vy, c.mu, u.t)
+    v.troncons = []
+    v.cache_etat = (None, None)
+    u._predire(v)
+    u.actif = v
+    return v
+
+
+def test_pilote_refuse_mars():
+    """Le moustique (TWR 1,2 sur Mars) ne peut pas s'y poser : le pilote doit refuser
+    proprement, sans gaspiller le carburant en freinage voué à l'échec (bug)."""
+    app = jeu_main.Application(tactile=True)
+    reglages.AIDES = True
+    app.nouvelle_partie(True)
+    u = app.univers
+    v = en_orbite(u, "Mars")
+    u.lancer_pilote(pilote.Atterrissage())
+    k = 0
+    while v.mode != "pose" and not v.detruit and u.pilote is not None and k < 60 * 60 * 60:
+        u.avancer(DT)
+        k += 1
+    carbu = sum(p.carburant for p in v.pieces)
+    print("   Mars : pilote arrêté, %.0f kg de carburant intacts, %s" % (
+        carbu, [m[0] for m in u.messages[-1:]]))
+    assert not v.detruit and v.mode != "pose", [m[0] for m in u.messages[-2:]]
+    assert u.pilote is None, "le pilote doit renoncer"
+    assert carbu > 1500, "le pilote a brûlé du carburant pour rien"
+
+
+def test_pilote_se_pose_sur_titan():
+    """Sur Titan l'atmosphère est si dense que le parachute se pose tout seul,
+    sans un gramme de carburant (le pilote n'avait pas le droit d'y voir un obstacle)."""
+    app = jeu_main.Application(tactile=True)
+    reglages.AIDES = True
+    app.nouvelle_partie(True)
+    u = app.univers
+    v = en_orbite(u, "Titan")
+    u.lancer_pilote(pilote.Atterrissage())
+    k = 0
+    while v.mode != "pose" and not v.detruit and u.pilote is not None and k < 60 * 60 * 300:
+        u.avancer(DT)
+        k += 1
+    print("   Titan :", [m[0] for m in u.messages[-1:]])
+    assert v.mode == "pose" and not v.detruit, [m[0] for m in u.messages[-2:]]
+
+
 if __name__ == "__main__":
     test_sas_redresse_pres_du_sol()
     test_joueur_se_pose()
     test_pilote_se_pose()
     test_pilote_se_pose_sur_terre()
+    test_pilote_refuse_mars()
+    test_pilote_se_pose_sur_titan()
     print("--- atterrissage : OK")

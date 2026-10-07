@@ -311,8 +311,10 @@ def planifier_retour(u, v):
             return None
         return (abs(tr.orbite.rp - vise) + 20.0 * dv, t, dv, tr.orbite.rp)
 
-    notes = [e for e in (essai(u.t + 30.0 + k * o.periode / 48.0, v_ech * (1.02 + 0.08 * j))
-                         for k in range(48) for j in range(12)) if e is not None]
+    # 96 endroits de l'orbite : la direction de départ compte plus que tout, une grille
+    # trop grossière rate la fenêtre et « planifie » un survol à des milliers de km
+    notes = [e for e in (essai(u.t + 30.0 + k * o.periode / 96.0, v_ech * (1.02 + 0.08 * j))
+                         for k in range(96) for j in range(12)) if e is not None]
     if not notes:
         u.dire(t("Retour : aucune trajectoire trouvée"), (255, 150, 60), 5)
         return False
@@ -406,25 +408,41 @@ class Atterrissage(Programme):
             u.ouvrir_parachute()
         f = poussee_max(v)
         if f <= 0.0:
-            # plus de carburant : si un parachute peut encore finir la descente, on
-            # continue sans rien dire (le voile se pose en douceur) ; sinon on s'arrête
-            if v.parachute_ouvert() or (c.atm_h > 0.0 and v.parachutes()
-                                        and u.altitude(v) < c.atm_h):
-                v.gaz = 0.0
-                return True
-            v.gaz = 1.0
-            self.etager_si_vide(u, v)
-            if poussee_max(v) <= 0.0:
+            # plus de poussée : l'étage courant est vide, on essaie de passer au suivant
+            # (sauf sous parachute ouvert : séparer casserait la voile)
+            if not v.parachute_ouvert():
+                v.gaz = 1.0
+                self.etager_si_vide(u, v)
+                f = poussee_max(v)
+            if f <= 0.0:
+                # aucun moteur utilisable : si un parachute peut encore finir la descente,
+                # on continue sans rien dire (le voile se pose en douceur) ; sinon on s'arrête
+                if v.parachute_ouvert() or (c.atm_h > 0.0 and v.parachutes()
+                                            and u.altitude(v) < 3 * c.atm_h):
+                    v.gaz = 0.0
+                    return True
                 v.gaz = 0.0
                 u.dire(t("Pilote : plus de carburant pour se poser"), (255, 150, 60), 5)
                 return False
-            return True
         a_max = f / v.masse()
-        if a_max <= pesanteur * 1.05:
-            u.dire(t("Pilote : moteur trop faible pour se poser ici"), (255, 150, 60), 5)
-            return False
+        g_sol = c.mu / (c.R * c.R)
         if self.phase is None:
+            # le parachute peut-il finir la descente tout seul, le moteur ne faisant
+            # qu'alléger la chute ? (vitesse d'arrivée sous grande voile, en surface)
+            voile_capable = (c.atm_h > 0.0 and bool(v.parachutes()) and a_max < g_sol
+                             and sqrt(2.0 * v.masse() * (g_sol - a_max) / (c.rho0 * 700.0)) < 10.0)
+            # sinon il faut un vrai moteur : jugé avec la gravité de la surface (c'est là
+            # qu'on se pose) — il faut de quoi freiner ET tenir face à la gravité avec de
+            # la marge (0,85*a - g ≥ 0,15*g) ; en dessous, freinage imbordable : on refuse.
+            if 0.85 * a_max - g_sol < 0.15 * g_sol and not voile_capable:
+                u.dire(t("Pilote : moteur trop faible pour se poser ici"), (255, 150, 60), 5)
+                return False
             tr = v.troncons[0] if v.troncons else None
+            if tr is not None and tr.fin == "sortie":
+                # la trajectoire quitte le secteur : pas la peine de freiner, on s'en va
+                u.dire(t("Pilote : on quitte {corps}, pas d'atterrissage ici", corps=t(c.nom)),
+                       (255, 150, 60), 5)
+                return False
             tombe = v_vert < 0.0 and hauteur < 0.3 * c.R
             self.phase = "chute" if (tombe or (tr is not None and tr.fin in ("impact", "atmo"))) else "desorbite"
         if self.phase == "desorbite":                    # freiner jusqu'à ce que la trajectoire touche le sol
@@ -441,9 +459,17 @@ class Atterrissage(Programme):
         if self.phase == "chute":
             v.gaz = 0.0
             # avec un parachute à bord : ne rien brûler tant que la vitesse dépasse la
-            # limite d'ouverture ; on traverse l'atmosphère et l'air freine gratuitement
-            attend_voile = (c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0
-                            and u.altitude(v) < 3 * c.atm_h)
+            # limite d'ouverture ; on traverse l'atmosphère et l'air freine gratuitement.
+            # Mais si l'air est trop ténu pour ralentir sous 250 m/s avant le sol,
+            # inutile d'attendre : on passe au freinage moteur tout de suite.
+            if c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0 and u.altitude(v) < 3 * c.atm_h:
+                # l'air ralentira-t-il la fusée sous la limite d'ouverture avant le sol ?
+                # (vitesse terminale au sol avec la traînée de base : en dessous de
+                # 250 m/s l'air gagne et on attend ; sinon freinage moteur tout de suite)
+                v_term = sqrt(2.0 * v.masse() * g_sol / (c.rho0 * v.cd_a(0.0, 1.0)))
+                attend_voile = v_term <= 250.0
+            else:
+                attend_voile = False
             if attend_voile:
                 reste = hauteur / max(1.0, -v_vert)
                 u.accel = min(_accel_pour(reste), 3)
