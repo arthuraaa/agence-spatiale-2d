@@ -26,4 +26,4 @@ Available in English (the language follows your device, and you can switch anyti
 No ads, no in-app purchases, no internet connection, no data collection.
 
 ## Release notes (max 500)
-Version 1.7.0: the game is now fully translated into English (choose it in the options). Same game otherwise: rocket building, orbits, docking, Moon and Mars, 8 tutorials, 4 historical scenarios (including Apollo 11), flight assists, music and sound effects.
+Version 1.7.0: the game is now fully translated into English (choose it in the options), and it looks better: gradient sky, twinkling stars and shooting stars, night-side shadows on planets and rockets, more realistic engine flames and atmospheric-reentry plasma. Rocket building, orbits, docking, Moon and Mars, 8 tutorials, 4 historical scenarios (including Apollo 11), flight assists, music and sound effects.

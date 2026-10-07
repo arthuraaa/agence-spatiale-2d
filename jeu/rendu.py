@@ -7,7 +7,7 @@ Astuce principale : quand un disque devient gigantesque à l'écran (planète vu
 de près), on ne dessine que l'arc visible sous forme de polygone.
 """
 import random
-from math import cos, sin, atan2, hypot, pi, log10, ceil, acosh, acos, log, exp
+from math import cos, sin, atan2, hypot, pi, log10, ceil, acosh, acos, log, exp, degrees
 import pygame
 from pygame import gfxdraw
 from .constantes import (MIROIR_X, ZOOM_MIN, ZOOM_MAX, RAYON_GRAND_CERCLE, LONGITUDE_PAS_DE_TIR,
@@ -25,6 +25,15 @@ def melange(c1, c2, f):
     f = max(0.0, min(1.0, f))
     return (int(c1[0] + (c2[0] - c1[0]) * f), int(c1[1] + (c2[1] - c1[1]) * f),
             int(c1[2] + (c2[2] - c1[2]) * f))
+
+
+def degrade_vertical(surf, c_haut, c_bas, bandes=64):
+    """Remplit l'écran d'un dégradé vertical (peu coûteux : 64 bandes rectangulaires)."""
+    L, H = surf.get_size()
+    for k in range(bandes):
+        y0 = k * H // bandes
+        y1 = max(y0 + 1, (k + 1) * H // bandes)
+        surf.fill(melange(c_haut, c_bas, k / (bandes - 1)), (0, y0, L, y1 - y0))
 
 
 # =============================================================================
@@ -303,18 +312,81 @@ def formes_piece(p, l, h):
     return [(c, _rect(-d, 0, d, h))]
 
 
-def dessiner_pile(surf, v, g, origine, axe, perp, flamme=0.0, vide=1.0, selection=None):
+def _flamme(surf, P, demi_ouv, yb, l, flamme, vide):
+    """Flamme d'un moteur actif, en couches superposées : halo translucide,
+    corps orange, cœur clair, pointe blanche. Scintille (longueur et inclinaison
+    tirées au hasard à chaque image). demi_ouv : demi-largeur à la tuyère, en m."""
+    lf = l * (1.3 + 2.6 * flamme) * (0.85 + 0.3 * random.random())
+    g = (random.random() - 0.5) * 0.18 * l             # petit tremblement latéral
+    try:                                               # halo diffus autour du jet
+        gfxdraw.filled_polygon(surf, [P(-demi_ouv * 1.6, yb), P(demi_ouv * 1.6, yb),
+                                      P(g, yb - lf * 1.25)], (255, 110, 20, 60))
+    except (OverflowError, pygame.error):
+        pass
+    pygame.draw.polygon(surf, (255, 150, 40), [P(-demi_ouv, yb), P(demi_ouv, yb), P(g, yb - lf)])
+    pygame.draw.polygon(surf, (255, 225, 140), [P(-demi_ouv * .55, yb), P(demi_ouv * .55, yb),
+                                                P(g * .5, yb - lf * .6)])
+    pygame.draw.polygon(surf, (255, 255, 240), [P(-demi_ouv * .22, yb), P(demi_ouv * .22, yb),
+                                                P(g * .3, yb - lf * .32)])
+
+
+def _fumee(surf, P, yb, l, z, vide):
+    """Panne de fumée sous la tuyère quand l'air est dense (vide proche de 0)."""
+    for k in range(5):
+        f = (k + 1) / 5.0
+        d = l * (1.5 + 4.0 * f) * (1.2 - vide)         # plus bas : panache qui s'étale
+        r = max(2.0, l * (0.45 + 1.2 * f) * z)
+        jx = (random.random() - 0.5) * r / z
+        x, y = P(jx, yb - d)
+        try:
+            gfxdraw.filled_circle(surf, int(x), int(y), int(r),
+                                  (185, 185, 192, int(75 * (1.0 - f))))
+        except (OverflowError, pygame.error):
+            pass
+
+
+def _plasma(surf, sx, sy, ux, uy, taille, chaleur):
+    """Traînée de plasma derrière un vaisseau qui rentre dans l'atmosphère.
+    (ux, uy) : direction du sillage à l'écran ; chaleur dans (0, 1)."""
+    L = taille * (1.2 + 3.0 * chaleur)
+    try:                                           # halo incandescent contre la coque
+        gfxdraw.filled_circle(surf, int(sx), int(sy), int(max(3, L * 0.18)),
+                              (255, 120, 40, int(70 * chaleur)))
+    except (OverflowError, pygame.error):
+        pass
+    for k, (d, ep, coul) in enumerate(((0.55, 0.10, (255, 90, 30)),
+                                       (0.85, 0.07, (255, 170, 80)),
+                                       (1.0, 0.045, (255, 240, 200)))):
+        e = ep * L
+        try:
+            gfxdraw.filled_polygon(surf, [
+                (int(sx - uy * e), int(sy + ux * e)), (int(sx + uy * e), int(sy - ux * e)),
+                (int(sx + ux * L * d + uy * e * 2), int(sy + uy * L * d - ux * e * 2)),
+                (int(sx + ux * L * d * 1.05), int(sy + uy * L * d * 1.05)),
+                (int(sx + ux * L * d - uy * e * 2), int(sy + uy * L * d + ux * e * 2))],
+                (coul[0], coul[1], coul[2], int(80 * chaleur * (1.0 - k * 0.2))))
+        except (OverflowError, pygame.error):
+            pass
+
+
+def dessiner_pile(surf, v, g, origine, axe, perp, flamme=0.0, vide=1.0, selection=None,
+                  jour=1.0):
     """
     Dessine toutes les pièces d'un vaisseau.
     origine : position écran du centre de masse ; axe / perp : vecteurs écran (px par mètre)
     correspondant à « vers le nez » et « latéral ». Sert aussi au hangar.
+    jour : éclairage solaire (1 = plein jour, 0.14 = côté nuit).
     """
     ox, oy = origine
     ax, ay = axe
     bx, by = perp
+    nuit = 1.0 - jour
 
     def P(x, y):
         return ox + ax * y + bx * x, oy + ay * y + by * x
+
+    def teinte(couleur):
+        return melange(couleur, (22, 28, 46), nuit) if nuit > 0.0 else couleur
 
     bas_pile = -(g.longueur - g.haut)
     i_moteur = None
@@ -328,30 +400,28 @@ def dessiner_pile(surf, v, g, origine, axe, perp, flamme=0.0, vide=1.0, selectio
             pied = bas_pile - 0.5 if efficace else yb - 1.0
             for s in (-1, 1):
                 x0, x1 = s * l / 2, s * (l / 2 + (1.7 if efficace else 0.8))
-                pygame.draw.polygon(surf, (120, 124, 136), [P(x0, yb + h), P(x0, yb), P(x1, pied),
+                pygame.draw.polygon(surf, teinte((120, 124, 136)), [P(x0, yb + h), P(x0, yb), P(x1, pied),
                                                             P(x1 - s * 0.25, pied)])
-                pygame.draw.polygon(surf, (70, 72, 80), [P(x1 - s * 0.6, pied), P(x1 + s * 0.4, pied),
+                pygame.draw.polygon(surf, teinte((70, 72, 80)), [P(x1 - s * 0.6, pied), P(x1 + s * 0.4, pied),
                                                          P(x1 + s * 0.4, pied - 0.15), P(x1 - s * 0.6, pied - 0.15)])
         for couleur, pts in formes_piece(p, l, h):
             if p.retournee:
                 poly = [P(x, yh - y) for x, y in pts]
             else:
                 poly = [P(x, yb + y) for x, y in pts]
-            pygame.draw.polygon(surf, couleur, poly)
+            pygame.draw.polygon(surf, teinte(couleur), poly)
         if selection is p:
             pygame.draw.polygon(surf, CYAN, [P(-l / 2, yb), P(l / 2, yb), P(l / 2, yh), P(-l / 2, yh)], 2)
         if i == i_moteur:                              # flamme du moteur actif
-            lf = l * (1.3 + 2.6 * flamme) * (0.85 + 0.3 * random.random())
-            ouv = 0.34 + 0.3 * vide
-            pygame.draw.polygon(surf, (255, 150, 40), [P(-l * ouv, yb), P(l * ouv, yb), P(0, yb - lf)])
-            pygame.draw.polygon(surf, (255, 236, 170), [P(-l * ouv * .5, yb), P(l * ouv * .5, yb),
-                                                        P(0, yb - lf * .55)])
+            _flamme(surf, P, l * (0.34 + 0.3 * vide), yb, l, flamme, vide)
+            if vide < 0.85:                            # fumée quand l'air est dense
+                _fumee(surf, P, yb, l, hypot(ax, ay), vide)
         if p.parachute == "ouvert" and p.ouverture > 0.0:
             _voile(surf, P, p, l, yh)
-    _dessiner_boosters(surf, v, g, P, flamme, vide, selection)
+    _dessiner_boosters(surf, v, g, P, flamme, vide, selection, nuit)
 
 
-def _dessiner_boosters(surf, v, g, P, flamme, vide, selection):
+def _dessiner_boosters(surf, v, g, P, flamme, vide, selection, nuit):
     """Paires de boosters latéraux : la même pile dessinée à gauche et à droite du cœur."""
     from .vaisseau import porteurs_actifs, moteur_et_reservoirs, indice_moteur
     actifs = porteurs_actifs(v.pieces) if flamme > 0.0 else []
@@ -365,22 +435,19 @@ def _dessiner_boosters(surf, v, g, P, flamme, vide, selection):
             # deux attaches (le découpleur radial) entre la pile centrale et le booster
             for ya in (haut_b - 0.9, bas_b + 1.2):
                 x0, x1 = cote * demi, cote * (ecart - l_b / 2)
-                pygame.draw.polygon(surf, (60, 62, 70), [P(x0, ya), P(x1, ya), P(x1, ya - 0.35), P(x0, ya - 0.35)])
+                pygame.draw.polygon(surf, melange((60, 62, 70), (22, 28, 46), nuit),
+                                    [P(x0, ya), P(x1, ya), P(x1, ya - 0.35), P(x0, ya - 0.35)])
             for j, (q, (yh, yb)) in enumerate(zip(pile, segs)):
                 l, h = q.m.l, q.m.h
                 xc = cote * ecart
                 for couleur, pts in formes_piece(q, l, h):
-                    pygame.draw.polygon(surf, couleur, [P(xc + x, yb + y) for x, y in pts])
+                    pygame.draw.polygon(surf, melange(couleur, (22, 28, 46), nuit),
+                                        [P(xc + x, yb + y) for x, y in pts])
                 if selection is q:
                     pygame.draw.polygon(surf, CYAN, [P(xc - l / 2, yb), P(xc + l / 2, yb),
                                                      P(xc + l / 2, yh), P(xc - l / 2, yh)], 2)
                 if j == i_moteur:
-                    lf = l * (1.3 + 2.6 * flamme) * (0.85 + 0.3 * random.random())
-                    ouv = 0.34 + 0.3 * vide
-                    pygame.draw.polygon(surf, (255, 150, 40), [P(xc - l * ouv, yb), P(xc + l * ouv, yb),
-                                                               P(xc, yb - lf)])
-                    pygame.draw.polygon(surf, (255, 236, 170), [P(xc - l * ouv * .5, yb), P(xc + l * ouv * .5, yb),
-                                                                P(xc, yb - lf * .55)])
+                    _flamme(surf, P, l * (0.34 + 0.3 * vide), yb, l, flamme, vide)
 
 
 def _voile(surf, P, p, l, yh):
@@ -411,16 +478,48 @@ def icone_vaisseau(surf, cam, v, sx, sy, couleur):
 # =============================================================================
 # Le monde
 # =============================================================================
+# Côté nuit des planètes : disque d'ombre précalculé une fois (alpha par pixel,
+# dégradé lisse depuis le terminateur), tourné vers l'anti-Soleil à chaque image.
+# Les polygones semi-transparents ne conviennent pas : gfxdraw repeint deux fois
+# les arêtes partagées et laisse des rayures radiales.
+_OMBRE = pygame.Surface((128, 128), pygame.SRCALPHA)
+for _j in range(128):
+    _yy = (_j + 0.5) / 64.0 - 1.0
+    for _i in range(64, 128):                      # moitié droite = côté nuit
+        _xx = (_i + 0.5) / 64.0 - 1.0
+        if _xx * _xx + _yy * _yy <= 1.0:
+            _OMBRE.set_at((_i, _j), (0, 0, 10, int(150 * _xx ** 0.75)))
+_OMBRES = {}          # cache des ombres tournées / mises à l'échelle
+
+
+def _ombre_nuit(surf, sx, sy, rp, a0):
+    """Assombrit le côté nuit d'un corps (centre sx,sy, rayon rp, nuit vers a0)."""
+    taille = (max(16, min(int(2 * rp), 1024)) + 31) // 32 * 32     # toujours ≥ 2rp
+    cle = (int(a0 * 28.65 / 4), taille)            # angle quantisé par pas de 4°
+    ombre = _OMBRES.get(cle)
+    if ombre is None:
+        ombre = pygame.transform.rotozoom(_OMBRE, -degrees(a0), taille / 128.0)
+        if len(_OMBRES) > 24:
+            _OMBRES.clear()
+        _OMBRES[cle] = ombre
+    surf.blit(ombre, ombre.get_rect(center=(int(sx), int(sy))))
+
+
 _rng = random.Random(7)
+# Étoiles : (rayon normalisé, angle, luminosité, taille, phase, vitesse de
+# scintillement, teinte bleutée). Phase et vitesse rendent le ciel vivant.
 _ETOILES = [(_rng.random() ** 0.5, _rng.random() * TAU, _rng.choice((90, 120, 150, 200, 255)),
-             _rng.choice((1, 1, 1, 2))) for _ in range(190)]
+             _rng.choice((1, 1, 1, 2)), _rng.random() * TAU,
+             _rng.choice((1.5, 2.5, 4.0, 7.0)), _rng.choice((0, 0, 15, 30)))
+            for _ in range(240)]
 
 
 def _fond(surf, u, cam):
-    """Couleur du ciel (bleu au sol, noir dans l'espace) puis étoiles."""
+    """Ciel en dégradé (horizon clair, zénith sombre ; noir dans l'espace) puis étoiles."""
     ciel = 0.0
     fond = NOIR
     a = cam.focus if cam.focus is not None else u.actif
+    c = None
     if a is not None and not isinstance(a, Corps) and a.corps.atm_h > 0 and cam.zoom * a.corps.R > 900:
         c = a.corps
         e = u.etat(a)
@@ -430,16 +529,42 @@ def _fond(surf, u, cam):
         ds = hypot(bx, by) or 1.0
         jour = max(0.06, min(1.0, 0.5 + 1.2 * (-(e[0] * bx + e[1] * by) / (r * ds))))
         ciel *= jour
+    if ciel > 0.02:
+        degrade_vertical(surf, melange(NOIR, c.couleur_ciel, ciel * 0.35),
+                         melange(NOIR, c.couleur_ciel, min(1.0, ciel * 1.3)))
         fond = melange(NOIR, c.couleur_ciel, ciel)
-    surf.fill(fond)
+    else:
+        surf.fill(NOIR)
     if ciel < 0.7:
+        instant = pygame.time.get_ticks() / 1000.0
         demi = hypot(cam.l, cam.h) / 2
         s = -1.0 if MIROIR_X else 1.0
-        for rr, th, lum, taille in _ETOILES:
+        noit = 1.0 - ciel / 0.7
+        for rr, th, lum0, taille, phase, vit, bleu in _ETOILES:
+            lum = int(lum0 * noit * (0.75 + 0.25 * sin(instant * vit + phase)))
+            if lum < 10:
+                continue
             ang = th + s * cam.angle
-            lum = int(lum * (1.0 - ciel / 0.7))
-            surf.fill((lum, lum, min(255, lum + 15)),
-                      (int(cam.l / 2 + rr * demi * cos(ang)), int(cam.h / 2 + rr * demi * sin(ang)), taille, taille))
+            x = int(cam.l / 2 + rr * demi * cos(ang))
+            y = int(cam.h / 2 + rr * demi * sin(ang))
+            coul = (lum, lum, min(255, lum + 15 + bleu))
+            surf.fill(coul, (x, y, taille, taille))
+            if lum0 == 255 and lum > 150:              # croix sur les plus brillantes
+                pygame.draw.line(surf, coul, (x - 3 * taille, y), (x + 4 * taille, y))
+                pygame.draw.line(surf, coul, (x, y - 3 * taille), (x, y + 4 * taille))
+        if ciel < 0.15:                                # étoile filante, une toutes les 17 s
+            periode = 17.0
+            phase = (instant % periode) / periode
+            if phase < 0.05:
+                f = phase / 0.05
+                alea = random.Random(int(instant / periode))
+                x0, y0 = alea.random() * cam.l * 0.8, alea.random() * cam.h * 0.4
+                vx, vy = 400 + 300 * alea.random(), 150 + 100 * alea.random()
+                lum = int(220 * sin(pi * f))           # s'allume puis s'éteint
+                if lum > 40:
+                    xa, ya = x0 + vx * f, y0 + vy * f
+                    xb, yb = x0 + vx * (f - 0.06), y0 + vy * (f - 0.06)
+                    pygame.draw.aaline(surf, (lum, lum, min(255, lum + 20)), (xb, yb), (xa, ya))
     return fond
 
 
@@ -468,7 +593,9 @@ def _dessiner_corps(surf, u, cam, c, fond):
             disque(surf, c.anneaux[2], sx, sy, rp * c.anneaux[1])
             disque(surf, melange(c.anneaux[2], NOIR, 0.45), sx, sy, rp * (c.anneaux[0] + c.anneaux[1]) / 2)
             disque(surf, fond, sx, sy, rp * c.anneaux[0])
-        if c.atm_h > 0:                                           # halo atmosphérique
+        if c.atm_h > 0 and hypot(cam.x - bx, cam.y - by) > c.R + c.atm_h:
+            # halo atmosphérique, vu de l'espace seulement : de l'intérieur, les
+            # disques recouvriraient tout l'écran et écraseraient le dégradé du ciel
             for k, f in enumerate((0.07, 0.15, 0.26, 0.4, 0.58)):
                 disque(surf, melange(fond, c.couleur_ciel, f), sx, sy, (c.R + c.atm_h * (1 - k / 5)) * cam.zoom)
         if rp > RAYON_GRAND_CERCLE and not c.etoile:              # vu de près : éclairage local
@@ -488,15 +615,15 @@ def _dessiner_corps(surf, u, cam, c, fond):
                 rot = c.angle_rotation(u.t)
                 for ang, dist, taille, coul in c.taches:
                     tx, ty = cam.vers_ecran(bx + c.R * dist * cos(ang + rot), by + c.R * dist * sin(ang + rot))
-                    pygame.draw.circle(surf, coul, (int(tx), int(ty)), max(1, int(rp * taille)))
+                    rt = max(1, int(rp * taille))
+                    if rt < 3:                     # trop petit pour un bord adouci
+                        pygame.draw.circle(surf, coul, (int(tx), int(ty)), rt)
+                    else:                          # bord adouci : auréole puis cœur
+                        pygame.draw.circle(surf, melange(coul, c.couleur, 0.5), (int(tx), int(ty)), rt)
+                        pygame.draw.circle(surf, coul, (int(tx), int(ty)), int(rt * 0.65))
             if not c.etoile and rp > 5 and abs(sx) < 9000 and abs(sy) < 9000:
-                a0 = atan2(-soleil_y, -soleil_x)                  # côté opposé au Soleil
-                pts = [(int(sx + rp * cos(a0 - pi / 2 + pi * k / 24)), int(sy + rp * sin(a0 - pi / 2 + pi * k / 24)))
-                       for k in range(25)]
-                try:
-                    gfxdraw.filled_polygon(surf, pts, (0, 0, 10, 130))
-                except (OverflowError, pygame.error):
-                    pass
+                a0 = atan2(-soleil_y, -soleil_x)                  # direction de la nuit
+                _ombre_nuit(surf, sx, sy, rp, a0)
     # sphère d'influence et nom
     rs = c.soi * cam.zoom if c.soi < INFINI else 0
     if 40 < rs < 30000 and rp < 400:
@@ -544,6 +671,11 @@ def _pas_de_tir(surf, u, cam):
     for h in range(4, 30, 5):
         pygame.draw.line(surf, (200, 110, 95), P(-9.5, h), P(-7.5, h + 3))
     pygame.draw.polygon(surf, (150, 64, 54), [P(-7.5, 19), P(-2.5, 19), P(-2.5, 20), P(-7.5, 20)])
+    # balise rouge clignotante au sommet de la tour
+    if pygame.time.get_ticks() % 1100 < 450:
+        tx, ty = P(-8.5, 30.5)
+        pygame.draw.circle(surf, (255, 70, 55), (int(tx), int(ty)), 2)
+        pygame.draw.circle(surf, (255, 70, 55), (int(tx), int(ty)), 4, 1)
 
 
 def _anomalies_troncon(tr, t, n, dense):
@@ -666,8 +798,20 @@ def _dessiner_vaisseaux(surf, u, cam, temps_reel):
             if v.mode == "physique" and v.gaz > 0 and (v.carburant_actif()[0] > 0 or
                                                       v.carburant_boosters()[0] > 0):
                 flamme = v.gaz
+            # éclairage solaire : le vaisseau s'assombrit du côté nuit, comme les planètes
+            e = u.etat(v)
+            bx, by = u.position_corps(v.corps)
+            r = hypot(e[0], e[1]) or 1.0
+            ds = hypot(bx, by) or 1.0
+            jour = max(0.14, min(1.0, 0.5 + 1.2 * (-(e[0] * bx + e[1] * by) / (r * ds))))
             dessiner_pile(surf, v, g, (sx, sy), (dx * z, dy * z), (px * z, py * z), flamme,
-                          1.0 - min(1.0, rho / 1.225))
+                          1.0 - min(1.0, rho / 1.225), jour=jour)
+            # plasma de rentrée : la coque chauffe quand l'air est dense et la vitesse forte
+            chaleur = min(1.0, rho * (e[2] * e[2] + e[3] * e[3]) / 2000000.0)
+            if chaleur > 0.05:
+                cvx, cvy = cam.direction_ecran(e[2], e[3])
+                nv = hypot(cvx, cvy) or 1.0
+                _plasma(surf, sx, sy, -cvx / nv, -cvy / nv, g.longueur * z, chaleur)
             if v is a and v.rcs and (u.commandes.avant or u.commandes.cote) and v.mono() > 0:
                 s = 1.0 if MIROIR_X else -1.0
                 fx = -(u.commandes.avant * dx + u.commandes.cote * s * px)
@@ -755,6 +899,7 @@ def _marqueurs_approche(surf, cam, u, approche, couleur):
 
 
 def _dessiner_effets(surf, u, cam):
+    """Explosions : flash, boule de feu, débris projetés et onde de choc."""
     for e in u.effets:
         c = e["corps"]
         bx, by = u.position_corps(c)
@@ -765,10 +910,20 @@ def _dessiner_effets(surf, u, cam):
         if r > 900 or not (-r < sx < cam.l + r and -r < sy < cam.h + r):
             continue
         f = max(0.0, 1.0 - age / 1.6)
+        if f > 0.15:                       # débris : éclats qui s'éloignent en pâlissant
+            for k in range(12):
+                a = ang + k * TAU / 12 + ((k * 2654435761) % 97) / 97.0
+                d = r * (1.3 + 1.5 * ((k * 7919) % 7) / 6.0)
+                ff = f * (0.55 + 0.45 * ((k * 31) % 10) / 9.0)
+                pygame.draw.circle(surf, (int(255 * ff), int(170 * ff), int(70 * ff)),
+                                   (int(sx + d * cos(a)), int(sy + d * sin(a))), 2)
         pygame.draw.circle(surf, (int(255 * f), int(120 * f), int(30 * f)), (int(sx), int(sy)), int(r))
         pygame.draw.circle(surf, (int(255 * f), int(220 * f), int(120 * f)), (int(sx), int(sy)), int(r * 0.6))
         if age < 0.5:
             pygame.draw.circle(surf, (255, 255, 235), (int(sx), int(sy)), int(r * 0.3))
+        if age < 0.7:                      # onde de choc : cercle qui grandit et s'estompe
+            pygame.draw.circle(surf, melange((255, 210, 140), NOIR, age / 0.7),
+                               (int(sx), int(sy)), int(r * 1.45), 2)
 
 
 def dessiner_monde(surf, u, cam, temps_reel=0.0):

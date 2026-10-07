@@ -35,7 +35,7 @@ La mécanique orbitale est réaliste (orbites, sphères d'influence, atmosphère
 Sans publicité, sans achats intégrés, sans connexion internet, sans collecte de données.
 
 ## Notes de version (500 caractères max)
-Version 1.7.0 : le jeu est désormais entièrement traduit en anglais (à choisir dans les options). Sinon, le même jeu : construction de fusées, orbites, amarrage, Lune et Mars, 8 tutoriels, 4 scénarios historiques (dont Apollo 11), aides au pilotage, musique et bruitages.
+Version 1.7.0 : le jeu est désormais entièrement traduit en anglais (à choisir dans les options), et le jeu gagne en beauté : ciel en dégradé, étoiles scintillantes et filantes, ombre sur le côté nuit des planètes et des fusées, flamme des moteurs et plasma de rentrée atmosphérique plus réalistes. Construction de fusées, orbites, amarrage, Lune et Mars, 8 tutoriels, 4 scénarios historiques (dont Apollo 11), aides au pilotage, musique et bruitages.
 
 ## Catégorie
 Jeu > Simulation. Mots-clés : espace, fusée, orbite, Lune, simulation, Apollo.
