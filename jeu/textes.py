@@ -510,9 +510,12 @@ TOUT = {
     "ÉTAGES (ordre d'allumage)": {"fr": "ÉTAGES (ordre d'allumage)",
                                   "en": "STAGES (ignition order)"},
     "{n} · (sans moteur)": {"fr": "{n} · (sans moteur)", "en": "{n} · (no engine)"},
-    "Repères : orbite ≈ 1 050 m/s · Lune aller-retour ≈ 2 000 m/s": {
-        "fr": "Repères : orbite ≈ 1 050 m/s · Lune aller-retour ≈ 2 000 m/s",
-        "en": "Guideline: orbit ≈ 1,050 m/s · Moon round trip ≈ 2,000 m/s"},
+    "Repères : orbite ≈ 1 050 m/s": {
+        "fr": "Repères : orbite ≈ 1 050 m/s",
+        "en": "Guideline: orbit ≈ 1,050 m/s"},
+    "Lune aller-retour ≈ 2 000 m/s": {
+        "fr": "Lune aller-retour ≈ 2 000 m/s",
+        "en": "Moon round trip ≈ 2,000 m/s"},
     "Poussée {kn} kN · Isp {ispv} s (vide) / {isps} s (sol)": {
         "fr": "Poussée {kn} kN · Isp {ispv} s (vide) / {isps} s (sol)",
         "en": "Thrust {kn} kN · Isp {ispv} s (vac) / {isps} s (asl)"},
@@ -880,6 +883,19 @@ TOUT = {
     "stats_crashs": {"fr": "Vaisseaux perdus : {n}", "en": "Rockets lost: {n}"},
     "stats_amarrages": {"fr": "Amarrages : {n}", "en": "Dockings: {n}"},
     "stats_poses": {"fr": "Atterrissages : {n}", "en": "Landings: {n}"},
+
+    # ---- Partage de fusées (hangar, menu Modèles) ----
+    "copier_code": {"fr": "Copier le code", "en": "Copy code"},
+    "coller_code": {"fr": "Coller un code", "en": "Paste a code"},
+    "code_copie": {"fr": "Code de {nom} copié : colle-le dans une messagerie pour le partager.",
+                   "en": "{nom}'s code copied: paste it in a messaging app to share it."},
+    "code_indisponible": {"fr": "Presse-papiers indisponible sur cet appareil.",
+                          "en": "Clipboard unavailable on this device."},
+    "code_illisible": {"fr": "Presse-papiers vide ou code de fusée illisible.",
+                       "en": "Clipboard empty or unreadable rocket code."},
+    "code_importee": {"fr": "Fusée « {nom} » importée !", "en": "Rocket “{nom}” imported!"},
+    "code_importee_verrouillee": {"fr": "Fusée « {nom} » importée, mais avec des pièces verrouillées.",
+                                  "en": "Rocket “{nom}” imported, but with locked parts."},
 
     # ---- À propos ----
     "apropos": {"fr": "À propos", "en": "About"},

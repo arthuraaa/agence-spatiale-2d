@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """Hangar : on assemble la fusée pièce par pièce, du nez vers le moteur."""
+import base64
+import binascii
+import json
 import pygame
 from .missions import MISSIONS
 from .constantes import BLANC, GRIS, GRIS_FONCE, CYAN, ORANGE, VERT, ROUGE, JAUNE, NOIR
@@ -17,6 +20,56 @@ HORS_ECRAN = (-100, -100)          # « position de la souris » sur écran tact
 
 L_GAUCHE, L_DROITE = 300, 330
 H_LIGNE, H_TITRE = 40, 26
+
+MARQUE_CODE = "AGS1."              # tout code de partage de fusée commence par ça
+
+
+def code_de_plan(nom, cles):
+    """Code court pour partager la fusée : un texte à coller dans une messagerie."""
+    brut = json.dumps([nom, cles], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return MARQUE_CODE + base64.urlsafe_b64encode(brut).decode("ascii").rstrip("=")
+
+
+def plan_de_code(code):
+    """Décode un code de partage, ou None s'il est illisible (clé inconnue, forme fausse...)."""
+    try:
+        code = code.strip().strip('"')
+        if not code.startswith(MARQUE_CODE):
+            return None
+        brut = base64.urlsafe_b64decode(code[len(MARQUE_CODE):] + "==")
+        nom, cles = json.loads(brut.decode("utf-8"))
+        if not isinstance(nom, str) or not isinstance(cles, list) or len(toutes_les_cles(cles)) > 40:
+            return None
+        if any(c not in CATALOGUE for c in toutes_les_cles(cles)):
+            return None
+        return nom, copie_plan(cles)
+    except Exception:                                 # binascii, JSON, structure inattendue...
+        return None
+
+
+def copier_dans_presse_papiers(brut):
+    """Met le texte dans le presse-papiers ; False si l'appareil ne le permet pas."""
+    try:
+        pygame.scrap.init()
+        brut = brut.encode("utf-8")
+        pygame.scrap.put("UTF8_STRING", brut)
+        pygame.scrap.put("text/plain;charset=utf-8", brut)
+        return True
+    except (pygame.error, NotImplementedError):
+        return False
+
+
+def lire_presse_papiers():
+    """Le texte du presse-papiers, ou None s'il est inaccessible."""
+    try:
+        pygame.scrap.init()
+        for typ in ("text/plain;charset=utf-8", "UTF8_STRING"):
+            brut = pygame.scrap.get(typ)
+            if brut:
+                return brut.decode("utf-8")
+        return ""
+    except (pygame.error, NotImplementedError):
+        return None
 
 
 class SceneHangar:
@@ -127,6 +180,29 @@ class SceneHangar:
         nom, _, cles = MODELES[k]
         self.cles, self.nom = copie_plan(cles), t(nom)
         self.selection, self.menu_modeles, self.message = None, False, ""
+
+    # ------------------------------------------------------------- partage de fusées
+    def copier_code(self):
+        """Mets le plan de la fusée dans le presse-papiers, sous forme de code court."""
+        if copier_dans_presse_papiers(code_de_plan(self.nom or "", self.cles)):
+            self.menu_modeles = False
+            self.message = t("code_copie", nom=self.nom or t("Vaisseau"))
+        else:
+            self.message = t("code_indisponible")
+
+    def coller_code(self):
+        """Charge la fusée décrite par le code du presse-papiers."""
+        brut = lire_presse_papiers()
+        resultat = plan_de_code(brut) if brut else None
+        if resultat is None:
+            self.message = t("code_illisible")
+            return
+        nom, cles = resultat
+        verrouillees = [c for c in toutes_les_cles(cles) if not self.u.piece_debloquee(c)]
+        self.cles, self.nom = cles, nom or t("Vaisseau")
+        self.selection, self.menu_modeles = None, False
+        self.message = t("code_importee_verrouillee", nom=self.nom) if verrouillees \
+            else t("code_importee", nom=self.nom)
 
     def problemes(self):
         """Liste (texte, bloquant) des problèmes de la fusée."""
@@ -439,8 +515,9 @@ class SceneHangar:
             y += 18
         y += 4
         if not self.tactile:
-            texte(surf, t("Repères : orbite ≈ 1 050 m/s · Lune aller-retour ≈ 2 000 m/s"), (x + 16, y), 11, GRIS)
-            y += 22
+            texte(surf, t("Repères : orbite ≈ 1 050 m/s"), (x + 16, y), 11, GRIS)
+            texte(surf, t("Lune aller-retour ≈ 2 000 m/s"), (x + 16, y + 15), 11, GRIS)
+            y += 34
         pbs = self.problemes() if pieces else []
         for txt, bloquant in pbs:
             y = texte_multiligne(surf, "! " + txt, (x + 16, y), self.ld - 32, 13,
@@ -478,7 +555,7 @@ class SceneHangar:
                                    t("Suivi des vols") if self.tactile else t("Suivi des vols (Échap)"),
                                    self.quitter_hangar, 15))
         if self.menu_modeles:
-            hm = 16 + 44 * len(MODELES)
+            hm = 16 + 44 * (len(MODELES) + 2)          # la liste des modèles + copier/coller
             mx, my = x - 330, h - 60 - hm
             panneau(surf, (mx, my, 320, hm), alpha=250)
             for k, (nom, desc, cles) in enumerate(MODELES):
@@ -486,6 +563,10 @@ class SceneHangar:
                 prix = prix_plan(cles)
                 b = Bouton((mx + 8, my + 8 + 44 * k, 304, 40), "", lambda k=k: self.charger_modele(k), actif=ok)
                 self.boutons.insert(0, b)
+            self.boutons.insert(0, Bouton((mx + 8, my + 8 + 44 * len(MODELES), 304, 40), "",
+                                          self.copier_code))
+            self.boutons.insert(0, Bouton((mx + 8, my + 8 + 44 * (len(MODELES) + 1), 304, 40), "",
+                                          self.coller_code))
 
     def _outils_selection(self, surf, l, h):
         """Boutons ✕ ▲ ▼ juste à gauche de la pièce sélectionnée (retirer, monter, descendre)."""
@@ -516,7 +597,7 @@ def dessiner_libelles_modeles(scene, surf):
         return
     l, h = surf.get_size()
     x = l - scene.ld
-    hm = 16 + 44 * len(MODELES)
+    hm = 16 + 44 * (len(MODELES) + 2)
     mx, my = x - 330, h - 60 - hm
     for k, (nom, desc, cles) in enumerate(MODELES):
         ok = all(scene.u.piece_debloquee(c) for c in toutes_les_cles(cles))
@@ -525,3 +606,5 @@ def dessiner_libelles_modeles(scene, surf):
               BLANC if ok else GRIS_FONCE, gras=True)
         texte(surf, t(desc) if ok else t("pièces pas encore débloquées"), (mx + 18, my + 29 + 44 * k), 11,
               GRIS if ok else GRIS_FONCE)
+    texte(surf, t("copier_code"), (mx + 18, my + 11 + 44 * len(MODELES)), 14, CYAN, gras=True)
+    texte(surf, t("coller_code"), (mx + 18, my + 11 + 44 * (len(MODELES) + 1)), 14, CYAN, gras=True)

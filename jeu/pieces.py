@@ -147,19 +147,19 @@ class Piece:
 # Modèles prêts à voler : (nom, description, liste de pièces du haut vers le bas).
 # Une entrée ["pièce", [pile d'un booster]] accroche une paire de boosters à cette pièce.
 MODELES = [
-    ("Pionnier", "2 étages pour l'orbite. Au retour, largue tout sauf la capsule avant le parachute.",
+    ("Pionnier", "2 étages pour l'orbite ; largue tout au retour.",
      ["capsule", "decoupleur", "reservoir_m", "alize", "decoupleur", "reservoir_l", "reservoir_l",
       "mistral"]),
-    ("Hermès", "Comme Pionnier, avec un port d'amarrage pour rejoindre la station.",
+    ("Hermès", "Pionnier + port d'amarrage pour la station.",
      ["port", "capsule", "decoupleur", "reservoir_m", "alize", "decoupleur", "reservoir_l",
       "reservoir_l", "mistral"]),
     ("Spoutnik", "Petit satellite (sonde + panneaux) et son lanceur.",
      ["coiffe", "sonde", "panneaux", "reservoir_s", "moustique", "decoupleur", "reservoir_m",
       "alize", "decoupleur", "reservoir_l", "reservoir_l", "mistral"]),
-    ("Cargo", "Apporte un module à la station, puis le remorqueur rentre.",
+    ("Cargo", "Apporte un module à la station et rentre.",
      ["port", "module", "port", "port", "capsule", "decoupleur", "reservoir_l", "alize",
       "decoupleur", "reservoir_xl", "reservoir_xl", "titan"]),
-    ("Hercule", "Deux boosters latéraux décollent avec l'étage central ; ÉTAGE les largue d'abord.",
+    ("Hercule", "Boosters latéraux ; ÉTAGE les largue d'abord.",
      ["capsule", "decoupleur", "reservoir_m", "alize", "decoupleur",
       "reservoir_l", ["reservoir_l", ["decoupleur_radial", "coiffe", "reservoir_l", "mistral"]], "mistral"]),
     ("Sélène", "3 étages : aller se poser sur la Lune et revenir.",

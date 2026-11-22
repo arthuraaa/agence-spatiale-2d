@@ -162,7 +162,10 @@ confidentialité).
 - **Hangar** : clique sur les pièces à gauche pour les empiler **du nez vers le moteur**.
   Un clic sur une pièce de la fusée la sélectionne (`Suppr` la retire, `↑ ↓` la déplace,
   une nouvelle pièce s'insère juste en dessous). À droite : masse, prix, Δv et poussée/poids
-  (TWR) de chaque étage. Le bouton *Modèles* propose 6 fusées prêtes à voler.
+  (TWR) de chaque étage. Le bouton *Modèles* propose 7 fusées prêtes à voler, et permet de
+  **partager une fusée** : *Copier le code* met un code court (`AGS1.…`) dans le
+  presse-papiers, que l'on peut envoyer à un ami ; *Coller un code* l'importe (les pièces
+  verrouillées restent bloquantes).
 - **Vol** : une seule vue, du vaisseau au système solaire entier, avec la molette.
   Clique sur une planète ou un vaisseau pour le **cibler**, y **centrer la vue** ou en
   **prendre le contrôle**.
