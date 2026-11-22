@@ -26,7 +26,8 @@ def test_recettes():
             ecart_moyen = sum(abs(x[i + 1] - x[i]) for i in range(len(x) - 1)) / (len(x) - 1)
             saut = abs(x[0] - x[-1])                 # ce qu'on entend quand la boucle recommence
             assert saut < 6 * ecart_moyen + 50, (nom, saut, ecart_moyen)
-    print("   %d sons fabriqués ; les 4 boucles se raccordent sans claquement" % len(sons.RECETTES))
+    print("   %d sons fabriqués ; les %d boucles se raccordent sans claquement"
+         % (len(sons.RECETTES), len(sons.BOUCLES)))
 
 
 def test_mixeur_cache_reglage():

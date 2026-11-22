@@ -133,7 +133,8 @@ Comme les tutoriels, les scénarios se jouent à part (ta carrière n'est pas to
 
 Tous les sons sont fabriqués par le code (bruit filtré, sinus, enveloppes) : aucun fichier
 audio. Boucles : moteur (plus sourd dans le vide), vent dans l'atmosphère, souffle du RCS,
-et une nappe d'ambiance. Bruitages : séparation d'étage, explosion, amarrage, parachute,
+grondement de la rentrée atmosphérique, et une nappe d'ambiance. Bruitages : séparation
+d'étage, explosion, amarrage, parachute,
 atterrissage, alertes, mission réussie, clic des boutons. Au premier lancement, les sons
 sont préparés une fois (quelques secondes sur téléphone) puis gardés dans `cache_sons/`.
 Une **musique d'ambiance** est composée en direct par le jeu (nappes, basse et cloches sur une
@@ -230,6 +231,8 @@ Sur un clavier QWERTY : flèches pour piloter, `W` plein gaz, `X` couper.
 Le temps accéléré au-delà de x4 exige moteurs coupés et hors atmosphère (le vaisseau passe
 alors « sur rails » : sa position est calculée exactement, jusqu'à x1 000 000).
 Le jeu ralentit tout seul avant une rentrée atmosphérique ou un impact.
+Pendant une rentrée trop rapide, la coque s'entoure de plasma, l'écran rougeoye,
+la vue vibre et un grondement sourd monte : freine, ou tu vas brûler.
 
 ## Premier vol : se mettre en orbite
 

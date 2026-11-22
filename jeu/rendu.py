@@ -55,6 +55,8 @@ class Camera:
         self.rayon_poignee = NOEUD_RAYON_POIGNEE   # plus grand sur écran tactile
         self._c, self._s = 1.0, 0.0
         self._mx = -1.0 if MIROIR_X else 1.0
+        self.tremble = 0.0             # rentrée atmosphérique : la vue vibre (0 à 1)
+        self._jx = self._jy = 0.0      # vibration de la frame courante, en pixels
 
     def taille(self, l, h):
         self.l, self.h = l, h
@@ -128,20 +130,28 @@ class Camera:
         ecart = angle_pi(cible - self.angle)
         self.angle = angle_pi(self.angle + ecart * min(1.0, 6.0 * dt))
         self._c, self._s = cos(self.angle), sin(self.angle)
+        # une vibration unique par frame : tout le monde bouge ensemble (pas de lignes déchirées)
+        if self.tremble > 0.0:
+            a = 6.0 * self.tremble
+            self._jx = (random.random() - 0.5) * a
+            self._jy = (random.random() - 0.5) * a
+        else:
+            self._jx = self._jy = 0.0
 
     def vers_ecran(self, ax, ay):
         dx, dy = ax - self.x, ay - self.y
         rx = dx * self._c + dy * self._s
         ry = -dx * self._s + dy * self._c
-        return self.l / 2 + self._mx * rx * self.zoom, self.h / 2 - ry * self.zoom
+        return (self.l / 2 + self._mx * rx * self.zoom + self._jx,
+                self.h / 2 - ry * self.zoom + self._jy)
 
     def direction_ecran(self, dx, dy):
         """Transforme une direction du monde en direction à l'écran (y vers le bas)."""
         return self._mx * (dx * self._c + dy * self._s), -(-dx * self._s + dy * self._c)
 
     def vers_monde(self, sx, sy):
-        rx = (sx - self.l / 2) / self.zoom * self._mx
-        ry = -(sy - self.h / 2) / self.zoom
+        rx = (sx - self._jx - self.l / 2) / self.zoom * self._mx
+        ry = -(sy - self._jy - self.h / 2) / self.zoom
         return self.x + rx * self._c - ry * self._s, self.y + rx * self._s + ry * self._c
 
 
@@ -931,6 +941,33 @@ def _dessiner_effets(surf, u, cam):
                                (int(sx), int(sy)), int(r * 1.45), 2)
 
 
+_voiles_rentree = {}                       # (l, h) -> surface orange, une par taille d'écran
+
+
+def _halo_rentree(surf, u):
+    """Voile incandescent sur tout l'écran quand la coque du vaisseau actif chauffe."""
+    a = u.actif
+    if a is None or a.detruit or a.mode != "physique":
+        return
+    alt = u.altitude(a)
+    c = a.corps
+    rho = c.densite(alt) if alt < c.atm_h else 0.0
+    if rho <= 0.0:
+        return
+    x, y, vx, vy = u.etat(a)              # vitesse air : on enlève la rotation de la planète
+    w = c.vitesse_rotation
+    chaleur = min(1.0, rho * ((vx + w * y) ** 2 + (vy - w * x) ** 2) / 2000000.0)
+    if chaleur < 0.25:                    # le plasma près de la coque suffit en dessous
+        return
+    l, h = surf.get_size()
+    voile = _voiles_rentree.get((l, h))
+    if voile is None:                     # une surface orange réutilisée d'une frame à l'autre
+        voile = _voiles_rentree[(l, h)] = pygame.Surface((l, h)).convert()
+        voile.fill((255, 84, 20))
+    voile.set_alpha(int(120 * (chaleur - 0.25) / 0.75))
+    surf.blit(voile, (0, 0))
+
+
 def dessiner_monde(surf, u, cam, temps_reel=0.0):
     """Dessine toute la scène spatiale."""
     fond = _fond(surf, u, cam)
@@ -955,6 +992,7 @@ def dessiner_monde(surf, u, cam, temps_reel=0.0):
         cam.poignees = dessiner_noeud(surf, u, cam, a)
     _dessiner_vaisseaux(surf, u, cam, temps_reel)
     _dessiner_effets(surf, u, cam)
+    _halo_rentree(surf, u)
 
 
 def objet_sous_souris(u, cam, pos, tolerance=14.0):

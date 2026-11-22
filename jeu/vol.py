@@ -141,7 +141,7 @@ class SceneVol:
         u.bruits.clear()
         if getattr(self.hud, "alerte", False):            # « Freinage : MAINTENANT »
             sons.jouer("alerte", 0.7)
-        moteur = vent = rcs = 0.0
+        moteur = vent = rcs = rentree = 0.0
         dans_l_air = False
         if a is not None and self.panneau != "pause" and a.mode == "physique":
             c = a.corps
@@ -158,9 +158,18 @@ class SceneVol:
                 w = c.vitesse_rotation
                 pression = 0.5 * rho * ((vx + w * y) ** 2 + (vy - w * x) ** 2)
                 vent = min(0.8, pression / 25000.0)
+                # même formule que le plasma (rendu) : la coque rougeoye, ça gronde et ça vibre
+                chaleur = min(1.0, 2.0 * pression / 2000000.0)
+                rentree = min(0.9, 1.1 * chaleur) if chaleur > 0.12 else 0.0
+                self.cam.tremble = chaleur
+            else:
+                self.cam.tremble = 0.0
+        else:
+            self.cam.tremble = 0.0
         sons.regler_boucle("moteur", moteur, dt)
         sons.regler_boucle("vent", vent, dt)
         sons.regler_boucle("rcs", rcs, dt)
+        sons.regler_boucle("rentree", rentree, dt)
         sons.regler_boucle("ambiance", 0.15 if dans_l_air else 0.35, dt)
 
     def changer_son(self):

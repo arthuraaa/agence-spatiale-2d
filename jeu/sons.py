@@ -23,7 +23,7 @@ from . import reglages
 
 VERSION = 1             # à augmenter quand une recette change : le cache est alors refait
 FREQ = 22050            # échantillons par seconde (largement assez pour ces sons)
-BOUCLES = ("moteur", "vent", "rcs", "ambiance")   # sons joués en continu, chacun sur son canal
+BOUCLES = ("moteur", "vent", "rcs", "rentree", "ambiance")   # sons joués en continu, chacun sur son canal
 ANTI_RAFALE = {"clic": 0.04, "alerte": 1.2, "explosion": 0.3, "bip": 0.08}   # délai mini (s)
 
 ACTIF = False
@@ -126,6 +126,17 @@ def _vent():
     return _normaliser(_boucler(_mul(souffle, houle), fondu), 0.7)
 
 
+def _rentree():
+    """Grondement continu de la rentrée atmosphérique : grave plasma + souffle chaud."""
+    fondu = _duree(0.5)
+    n = _duree(3.0) + fondu
+    b = _bruit(n, 1)
+    grondement = _normaliser(_passe_bas(_passe_bas(b, 0.03), 0.06), 1.0)
+    souffle = _normaliser([p - q for p, q in zip(_passe_bas(b, 0.20), _passe_bas(b, 0.02))], 1.0)
+    houle = [0.7 + 0.3 * math.sin(2.0 * math.pi * i / _duree(3.0)) for i in range(n)]
+    return _normaliser(_boucler(_mul(_somme((0.8, grondement), (0.35, souffle)), houle), fondu), 0.8)
+
+
 def _rcs():
     fondu = _duree(0.1)
     return _normaliser(_boucler(_passe_haut(_bruit(_duree(0.5) + fondu, 3), 0.35), fondu), 0.6)
@@ -217,7 +228,7 @@ def _succes():
     return _normaliser(out, 0.55)
 
 
-RECETTES = {"moteur": _moteur, "vent": _vent, "rcs": _rcs, "ambiance": _ambiance,
+RECETTES = {"moteur": _moteur, "vent": _vent, "rcs": _rcs, "rentree": _rentree, "ambiance": _ambiance,
             "separation": _separation, "explosion": _explosion, "amarrage": _amarrage,
             "parachute": _parachute, "pose": _pose, "clic": _clic, "bip": _bip,
             "alerte": _alerte, "succes": _succes}
