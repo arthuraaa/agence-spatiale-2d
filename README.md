@@ -84,13 +84,13 @@ est dans **`PUBLICATION.md`**.
 | gaz | poser le doigt sur la manette de gauche et glisser (en bas = coupé) |
 | tourner | maintenir ⟲ ou ⟳ (en bas à droite) |
 | étage, parachute, désamarrer, récupérer | boutons de la colonne de droite |
-| SAS | boutons du bas (STAB, PRO, RÉTRO, RAD+, RAD−, CIBLE, ANTI, MAN) |
+| SAS | boutons du bas (STAB, PRO, RÉTRO, puis « … » déplie RAD+, RAD−, CIBLE, ANTI, MAN) |
 | RCS | bouton RCS, puis maintenir ▲ ▼ ◀ ▶ |
 | temps | ◀ et ▶ en haut ; taper au centre remet à x1 |
 | zoom | pincer à deux doigts |
 | cibler, centrer, contrôler | taper sur une planète ou un vaisseau |
 | déplacer la vue | glisser un doigt dans le vide |
-| revenir au vaisseau | ◎ : la vue revient sur la fusée et rezoome dessus |
+| revenir au vaisseau | bouton « Vaisseau » : la vue revient sur la fusée et rezoome dessus |
 | nœud de manœuvre | taper sur l'orbite, glisser une poignée, ou la taper (±1 m/s) |
 | pilote automatique | bouton « Pilote » en haut à droite (si les aides sont activées) |
 | menu, missions, aide, sauvegarde | ☰ en haut à droite, ou le bouton « retour » d'Android |
@@ -212,7 +212,7 @@ confidentialité).
 | Molette, `PgPréc` / `PgSuiv` | zoom |
 | Clic sur un objet | cibler / centrer la vue / contrôler |
 | Clic droit (ou clic dans le vide) + glisser | déplacer la vue sur la carte |
-| `F`, ou « ◎ Vaisseau » | revenir sur le vaisseau (et rezoomer dessus) |
+| `F`, ou « Revenir au vaisseau » | revenir sur le vaisseau (et rezoomer dessus) |
 | `C` | caméra : auto / horizon local / nord en haut |
 | `,` et `;` (ou `.`) | ralentir / accélérer le temps |
 | `Entrée` | temps normal (x1) |

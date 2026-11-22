@@ -128,7 +128,7 @@ def test_interface_carburant_et_carte():
     assert 200 < decalage < 250
     sc.maj(1 / 60)
     sc.dessiner(app.ecran)
-    assert any(b.libelle == "◎ Vaisseau (F)" for b in sc.hud.boutons)
+    assert any(b.libelle == "Revenir au vaisseau (F)" for b in sc.hud.boutons)
     sc.evenement(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_f, scancode=0, unicode="f", mod=0))
     for _ in range(240):
         sc.maj(1 / 60)
@@ -161,7 +161,7 @@ def test_interface_carburant_et_carte():
     assert 120 < decalage < 140
     sc2.maj(1 / 60)
     sc2.dessiner(app2.ecran)
-    b = next(b for b in sc2.hud.boutons if b.libelle == "◎")
+    b = next(b for b in sc2.hud.boutons if b.libelle == "Vaisseau")
     sc2.hud.clic(b.rect.center)
     for _ in range(240):
         sc2.maj(1 / 60)

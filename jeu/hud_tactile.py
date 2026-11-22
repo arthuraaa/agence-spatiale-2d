@@ -54,8 +54,13 @@ class HudTactile(Hud):
         self.noeud_visible = False
         self.y_haut_sas = 0
         self.rect_croix = None                # zone de la croix RCS (elle a priorité sur les panneaux)
+        self.sas_etendu = False               # « … » déplie les modes SAS moins utilisés
 
     # ------------------------------------------------------------ doigts
+    def derouler_sas(self):
+        """Le bouton « … » déplie les modes SAS moins utilisés (RAD+, RAD−, CIBLE, ANTI, MAN)."""
+        self.sas_etendu = not self.sas_etendu
+
     def zone(self, pos):
         """Commande à maintenir sous le doigt : "gaz", ("rot", ±1), ("rcs", avant, côté) ou None."""
         for rect, commande, _ in self.maintenus:
@@ -74,23 +79,25 @@ class HudTactile(Hud):
     def _construire_boutons(self, u, l, h):
         sc, a = self.scene, u.actif
         b, maintenus = [], []
-        # en haut à droite : menu, et « revenir au vaisseau » quand la vue est ailleurs
+        # en haut à droite : menu, et un bouton « Vaisseau » bien lisible (pas un symbole)
+        # quand la vue s'est perdue ailleurs
         b.append(Bouton((l - MX - 56, M, 56, 44), "☰", lambda: sc.ouvrir("pause"), 24))
         hors = sc.cam.hors_vaisseau(u)
-        x_pilote = l - MX - 62
+        x_droite = l - MX - 62
         if hors:                                        # revenir (et rezoomer) sur la fusée
-            b.append(Bouton((l - MX - 118, M, 56, 44), "◎", sc.recentrer, 24))
-            x_pilote -= 62
+            b.append(Bouton((x_droite - 104, M, 104, 44), t("Vaisseau"), sc.recentrer, 16))
+            x_droite -= 110
+        x_pilote = x_droite
         if reglages.AIDES and a is not None:                 # pilote automatique
             b.append(Bouton((x_pilote - 96, M, 96, 44), t("Pilote"), self.basculer_menu_pilote, 16,
                             allume=u.pilote is not None or self.menu_pilote))
             self.ancre_pilote = (x_pilote, M)
         # en haut au centre : accélération du temps (la case du milieu remet le temps à x1) ;
         # sur écran étroit, décalée à droite pour ne pas couvrir le panneau de vol, et
-        # compacte (44/92/44) si « ◎ » et « Pilote » lui laissent moins de la place
+        # compacte (44/92/44) si « Vaisseau » et « Pilote » lui laissent moins de la place
         gauche_panneau = MX + L_PANNEAU + 4
         droite_boutons = (x_pilote - 96) if (reglages.AIDES and a is not None) else \
-            (l - MX - 118 if hors else l - MX - 56)
+            (x_droite if hors else l - MX - 56)
         if l // 2 + 124 <= droite_boutons - 4:
             xc = max(l // 2, gauche_panneau + 124)
             b.append(Bouton((xc - 124, M, 52, 44), "◀", lambda: u.changer_acceleration(-1), 20))
@@ -134,10 +141,15 @@ class HudTactile(Hud):
         # ---- manette des gaz, à gauche sous le panneau de vol
         self.rect_gaz = pygame.Rect(MX, M + H_INFOS + 12, L_GAZ, h - 2 * M - H_INFOS - 12)
         maintenus.append((self.rect_gaz, "gaz", ""))
-        # ---- SAS en bas, entre la manette et la colonne de droite ; cadran au-dessus
+        # ---- SAS en bas, entre la manette et la colonne de droite ; cadran au-dessus.
+        # Allégé : OFF STAB PRO RÉTRO sont toujours là, les modes plus rares (RAD+, RAD−,
+        # CIBLE, ANTI, MAN) se déplient via « … » pour ne pas encombrer le bas de l'écran.
         gauche, droite = MX + L_GAZ + 14, x0 - 14
-        rangs = [SAS] if len(SAS) * PAS_SAS - 6 <= droite - gauche else [SAS[:5], SAS[5:]]
-        larg = len(rangs[0]) * PAS_SAS - 6
+        base, extra = SAS[:4], SAS[4:]
+        # le mode SAS courant doit toujours rester visible, même rangée rare
+        montre_extra = self.sas_etendu or a.sas in [m for m, _ in extra]
+        rangs = ([extra] if montre_extra else []) + [base]
+        larg = max(len(r) for r in rangs) * PAS_SAS - 6
         xs = gauche + (droite - gauche - larg) // 2
         for r, rang in enumerate(rangs):
             ys = h - M - H_SAS - (len(rangs) - 1 - r) * (H_SAS + 6)
@@ -148,6 +160,9 @@ class HudTactile(Hud):
                 b.append(Bouton((xs + k * PAS_SAS, ys, PAS_SAS - 6, H_SAS), lib, choisir, 14,
                                 actif=(mode != "manoeuvre" or a.noeud is not None),
                                 allume=(a.sas == mode)))
+            if r == len(rangs) - 1:                    # « … » sur la rangée du bas : déplie/replie
+                b.append(Bouton((xs + len(rang) * PAS_SAS, ys, PAS_SAS - 6, H_SAS), "…",
+                                self.derouler_sas, 18, allume=montre_extra))
         self.y_haut_sas = h - M - H_SAS - (len(rangs) - 1) * (H_SAS + 6)
         if larg >= 2 * R_CADRAN + 20:
             self.cadran = (xs + larg // 2, self.y_haut_sas - R_CADRAN - 14)

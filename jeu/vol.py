@@ -66,7 +66,7 @@ def aide_tactile():
                        (t("Tape sur une poignée"), t("± 1 m/s (réglage fin)")),
                        (t("Glisser le centre du nœud"), t("le déplacer sur l'orbite")),
                        (t("Deux doigts"), t("pincer pour zoomer")),
-                       (t("◎"), t("revenir au vaisseau"))]),
+                       (t("Vaisseau"), t("revenir au vaisseau"))]),
     ]
 
 

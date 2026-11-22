@@ -396,6 +396,12 @@ class Atterrissage(Programme):
         if v.mode == "pose":
             v.gaz = 0.0
             return False
+        # les boosters brûlent à plein gaz dès qu'on met du gaz (impossible de les doser)
+        # et leur flamme part en même temps que le parachute : on les largue tout de suite
+        from .vaisseau import porteurs_actifs
+        if porteurs_actifs(v.pieces):
+            u._larguer_boosters(v)
+            u.dire(t("Pilote : largage des boosters"), (120, 230, 140), 4)
         v.ref_vitesse, v.sas = "surface", "retro"
         x, y, vx, vy = u.etat(v)
         r = hypot(x, y)
@@ -415,7 +421,12 @@ class Atterrissage(Programme):
             # (sauf sous parachute ouvert : séparer casserait la voile)
             if not v.parachute_ouvert():
                 v.gaz = 1.0
-                self.etager_si_vide(u, v)
+                # on n'étage que si ce qui reste au-dessus du découpleur garde un moteur :
+                # larguer la dernière section (train compris) ne servirait qu'à s'écraser
+                from .vaisseau import indice_decoupleur_bas, indice_moteur
+                i = indice_decoupleur_bas(v.pieces)
+                if i is not None and indice_moteur(v.pieces[:i]) is not None:
+                    self.etager_si_vide(u, v)
                 f = poussee_max(v)
             if f <= 0.0:
                 # aucun moteur utilisable : si un parachute peut encore finir la descente,
@@ -430,10 +441,10 @@ class Atterrissage(Programme):
         a_max = f / v.masse()
         g_sol = c.mu / (c.R * c.R)
         if self.phase is None:
-            # le parachute peut-il finir la descente tout seul, le moteur ne faisant
-            # qu'alléger la chute ? (vitesse d'arrivée sous grande voile, en surface)
-            voile_capable = (c.atm_h > 0.0 and bool(v.parachutes()) and a_max < g_sol
-                             and sqrt(2.0 * v.masse() * (g_sol - a_max) / (c.rho0 * 700.0)) < 10.0)
+            # le parachute peut-il finir la descente tout seul ? (vitesse d'arrivée au sol
+            # sous grande voile, moteur coupé) — sinon il faut un vrai moteur avec de la marge
+            voile_capable = (c.atm_h > 0.0 and bool(v.parachutes())
+                             and sqrt(2.0 * v.masse() * g_sol / (c.rho0 * 700.0)) < 8.0)
             # sinon il faut un vrai moteur : jugé avec la gravité de la surface (c'est là
             # qu'on se pose) — il faut de quoi freiner ET tenir face à la gravité avec de
             # la marge (0,85*a - g ≥ 0,15*g) ; en dessous, freinage imbordable : on refuse.
@@ -462,18 +473,23 @@ class Atterrissage(Programme):
         if self.phase == "chute":
             v.gaz = 0.0
             # avec un parachute à bord : ne rien brûler tant que la vitesse dépasse la
-            # limite d'ouverture ; on traverse l'atmosphère et l'air freine gratuitement.
-            # Mais si l'air est trop ténu pour ralentir sous 250 m/s avant le sol,
-            # inutile d'attendre : on passe au freinage moteur tout de suite.
-            if c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0 and u.altitude(v) < 3 * c.atm_h:
-                # l'air ralentira-t-il la fusée sous la limite d'ouverture avant le sol ?
-                # (vitesse terminale au sol avec la traînée de base : en dessous de
-                # 250 m/s l'air gagne et on attend ; sinon freinage moteur tout de suite)
-                v_term = sqrt(2.0 * v.masse() * g_sol / (c.rho0 * v.cd_a(0.0, 1.0)))
-                attend_voile = v_term <= 250.0
+            # limite d'ouverture et que l'air peut encore nous y amener. Le jugement se
+            # fait avec la densité ICI (vitesse terminale locale) : en arrivant trop haut
+            # trop vite, l'air est trop ténu — inutile d'attendre, on freine au moteur.
+            if c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0:
+                # traînée d'un vaisseau aligné vertical, le vent de face (flux par la queue)
+                cd_a = v.cd_a(-1.0, 0.0)
+                # l'air gagne-t-il déjà ICI ? (vitesse terminale à la densité locale)
+                rho = c.densite(u.altitude(v))
+                attend_voile = (rho > 0.0 and sqrt(2.0 * v.masse() * g_sol
+                                                   / (rho * cd_a)) <= 250.0)
+                # sinon, l'air finira-t-il au moins avant le sol ? (vitesse terminale au
+                # sol : en dessous de 250 m/s l'air l'emportera en se densifiant — inutile
+                # de brûler tout le carburant haut dans le ciel, le parachute s'ouvrira)
+                air_finira = sqrt(2.0 * v.masse() * g_sol / (c.rho0 * cd_a)) <= 250.0
             else:
-                attend_voile = False
-            if attend_voile:
+                attend_voile, air_finira = False, False
+            if attend_voile or air_finira:
                 reste = hauteur / max(1.0, -v_vert)
                 u.accel = min(_accel_pour(reste), 3)
             elif ((v.parachute_ouvert() and hauteur <= 300.0)
@@ -483,10 +499,22 @@ class Atterrissage(Programme):
             else:
                 reste = (hauteur - 1.25 * arret) / max(1.0, -v_vert)
                 u.accel = min(_accel_pour(reste), 3)
+                # dans l'air avec une voile à bord mais trop vite pour l'ouvrir (250 m/s) :
+                # freiner au moteur, sinon la chute libre arrive trop vite pour être arrêtée
+                if c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0:
+                    v.gaz = 1.0
             return True
         u.accel = 0
-        if v.parachute_ouvert() and vitesse <= 6.0:
-            v.gaz = 0.0                                  # le voile descend tout seul, on économise
+        if v.parachute_ouvert():
+            # sous voile : si l'air seul amène doucement au sol (vitesse d'arrivée sous 6 m/s),
+            # on coupe tout — le parachute finit la descente et on garde le carburant
+            v_arr = sqrt(2.0 * v.masse() * g_sol
+                         / (c.rho0 * (v.cd_a(-1.0, 0.0) + v.surface_parachutes())))
+            if c.atm_h > 0.0 and v_arr <= 6.0:
+                v.gaz = 0.0
+                return True
+        if vitesse <= 6.0:
+            v.gaz = 0.0                                  # déjà doux : on économise
             return True
         if hauteur > 12.0 or vitesse > 4.0:              # freinage : s'arrêter juste au-dessus du sol
             besoin = (vitesse * vitesse - 2.25) / (2.0 * max(hauteur - 4.0, 0.5)) + pesanteur

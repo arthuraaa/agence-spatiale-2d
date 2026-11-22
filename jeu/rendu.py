@@ -523,11 +523,12 @@ def _ombre_nuit(surf, sx, sy, rp, a0):
 
 _rng = random.Random(7)
 # Étoiles : (rayon normalisé, angle, luminosité, taille, phase, vitesse de
-# scintillement, teinte bleutée). Phase et vitesse rendent le ciel vivant.
+# scintillement, teinte bleutée). Peu nombreuses et dessinées en carrés de 1-2 px :
+# le scintillement (sin) est réservé aux brillantes, les faibles coûtent un seul fill.
 _ETOILES = [(_rng.random() ** 0.5, _rng.random() * TAU, _rng.choice((90, 120, 150, 200, 255)),
              _rng.choice((1, 1, 1, 2)), _rng.random() * TAU,
              _rng.choice((1.5, 2.5, 4.0, 7.0)), _rng.choice((0, 0, 15, 30)))
-            for _ in range(240)]
+            for _ in range(140)]
 
 
 def _fond(surf, u, cam):
@@ -557,7 +558,10 @@ def _fond(surf, u, cam):
         s = -1.0 if MIROIR_X else 1.0
         noit = 1.0 - ciel / 0.7
         for rr, th, lum0, taille, phase, vit, bleu in _ETOILES:
-            lum = int(lum0 * noit * (0.75 + 0.25 * sin(instant * vit + phase)))
+            if lum0 <= 120 and taille == 1:            # étoile faible : fixe, pas de sin
+                lum = int(lum0 * noit)
+            else:
+                lum = int(lum0 * noit * (0.75 + 0.25 * sin(instant * vit + phase)))
             if lum < 10:
                 continue
             ang = th + s * cam.angle
@@ -754,7 +758,8 @@ def point_trajectoire(u, cam, tr, indice, t):
     return ox + x, oy + y
 
 
-def _dessiner_trajectoire(surf, u, cam, troncons, couleurs, marqueurs=True, echantillons=None):
+def _dessiner_trajectoire(surf, u, cam, troncons, couleurs, marqueurs=True, echantillons=None,
+                          depart=None):
     t = u.t
     for i, tr in enumerate(troncons):
         if tr.t1 <= t and tr.fin is not None:
@@ -766,8 +771,15 @@ def _dessiner_trajectoire(surf, u, cam, troncons, couleurs, marqueurs=True, echa
             ox, oy = u.position_corps(c.parent)
         else:
             ox, oy = u.position_corps(c)
+        # nombre de points selon la taille de l'orbite à l'écran : inutile d'en mettre
+        # 150 pour un cercle de 40 px (et chaque point coûte du trig + une projection)
+        if echantillons is not None:
+            n = 150 if i == 0 else 90          # résolution complète pour les aides au pilotage
+        else:
+            r_ecran = (orb.ra if orb.ra < INFINI else orb.rp) * cam.zoom
+            n = 150 if r_ecran > 600 else 90 if r_ecran > 200 else 48 if r_ecran > 60 else 24
         pts = []
-        for A in _anomalies_troncon(tr, t, 150 if i == 0 else 90, i == 0):
+        for A in _anomalies_troncon(tr, t, n, i == 0):
             x, y = orb.position_depuis_anomalie(A)
             tA = orb.temps_de_anomalie(A) if (dans_parent or echantillons is not None) else 0.0
             if dans_parent:
@@ -777,6 +789,8 @@ def _dessiner_trajectoire(surf, u, cam, troncons, couleurs, marqueurs=True, echa
             pts.append(p)
             if echantillons is not None:
                 echantillons.append((p[0], p[1], tA))
+        if i == 0 and depart is not None:
+            pts[0] = depart                      # la ligne part de la vraie position du vaisseau
         ligne_brisee(surf, couleur, pts)
         if not marqueurs:
             continue
@@ -1006,8 +1020,12 @@ def dessiner_monde(surf, u, cam, temps_reel=0.0):
         _dessiner_trajectoire(surf, u, cam, cible.troncons[:1], [(150, 70, 130)], marqueurs=False)
     cam.echantillons, cam.poignees = [], []
     if a is not None and a.mode != "pose" and a.troncons and a.orbite is not None:
+        # départ ancré sur la vraie position : entre deux rafraîchissements de la
+        # prédiction, l'orbite stockée prend du retard (vaisseau qui pousse) et la
+        # ligne se mettait à trembler au décollage
+        ex, ey, _, _ = u.etat(a)
         _dessiner_trajectoire(surf, u, cam, a.troncons, COULEURS_TRAJECTOIRE,
-                              echantillons=cam.echantillons)
+                              echantillons=cam.echantillons, depart=cam.vers_ecran(ex, ey))
     if a is not None and a.plan:                     # trajectoire prévue après la manœuvre
         _dessiner_trajectoire(surf, u, cam, a.plan, COULEURS_PLAN)
     if u.approche is not None and a is not None:

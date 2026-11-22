@@ -115,7 +115,7 @@ class Hud:
                 b.append(Bouton((x, y, 150, 28), t("Parachute (P)"), u.ouvrir_parachute))
                 y -= 32
             if sc.cam.hors_vaisseau(u):
-                b.append(Bouton((x, y, 150, 28), t("◎ Vaisseau (F)"), sc.recentrer, 13))
+                b.append(Bouton((x - 40, y, 190, 28), t("Revenir au vaisseau (F)"), sc.recentrer, 13))
                 y -= 32
             if reglages.AIDES:
                 lib = t("Pilote : {nom}", nom=u.pilote.nom) if u.pilote is not None else t("Pilote auto (G)")
