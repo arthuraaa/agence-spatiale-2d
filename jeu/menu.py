@@ -3,8 +3,8 @@
 import random
 from math import sin
 import pygame
-from .constantes import BLANC, GRIS, CYAN, NOIR
-from .interface import texte, Bouton
+from .constantes import BLANC, GRIS, CYAN, NOIR, VERT
+from .interface import texte, texte_multiligne, Bouton
 from .rendu import disque, melange
 from .tactile import Doigts
 from .version import __version__
@@ -15,7 +15,7 @@ from . import sauvegarde, plateforme, reglages, sons, textes
 class SceneMenu:
     def __init__(self, app, vue="principal"):
         self.app = app
-        self.vue = vue                    # "principal" ou "tutos" (liste des tutoriels)
+        self.vue = vue                    # "principal", "tutos", "options", "reussites", "apropos"...
         self.boutons = []
         self.doigts = Doigts()            # sur téléphone, les doigts remplacent la souris
         self.t = 0.0
@@ -24,7 +24,7 @@ class SceneMenu:
 
     def evenement(self, ev):
         if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
-            if self.vue in ("tutos", "options", "scenarios"):
+            if self.vue in ("tutos", "options", "scenarios", "reussites", "apropos"):
                 self.vue = "principal"
             else:
                 self.app.quitter()
@@ -74,20 +74,25 @@ class SceneMenu:
             self._page_options(surf, l, h, souris)
         elif self.vue == "scenarios":
             self._liste_tutos(surf, l, h, souris, genre="mission")
+        elif self.vue == "reussites":
+            self._page_reussites(surf, l, h, souris)
+        elif self.vue == "apropos":
+            self._page_apropos(surf, l, h, souris)
         else:
             entrees = [(t("continuer"), app.continuer, sauvegarde.sauvegarde_existe()),
                        (t("nouvelle_carriere"), lambda: app.nouvelle_partie(False), True),
                        (t("bac_a_sable"), lambda: app.nouvelle_partie(True), True),
                        (None, None, True),                          # Tutoriels | Scénarios (côte à côte)
+                       (t("reussites_titre"), lambda: setattr(self, "vue", "reussites"), True),
                        (t("options"), lambda: setattr(self, "vue", "options"), True),
                        (t("quitter"), app.quitter, True)]
-            y0 = int(h * 0.36)
-            self.boutons = [Bouton((l // 2 - 160, y0 + 52 * k, 320, 42), lib, act, 17, actif=ok)
+            y0 = int(h * 0.34)
+            self.boutons = [Bouton((l // 2 - 160, y0 + 47 * k, 320, 40), lib, act, 17, actif=ok)
                             for k, (lib, act, ok) in enumerate(entrees) if lib is not None]
             k = [e[0] for e in entrees].index(None)
-            self.boutons.append(Bouton((l // 2 - 160, y0 + 52 * k, 156, 42), t("tutoriels"),
+            self.boutons.append(Bouton((l // 2 - 160, y0 + 47 * k, 156, 40), t("tutoriels"),
                                        lambda: setattr(self, "vue", "tutos"), 17))
-            self.boutons.append(Bouton((l // 2 + 4, y0 + 52 * k, 156, 42), t("scenarios"),
+            self.boutons.append(Bouton((l // 2 + 4, y0 + 47 * k, 156, 40), t("scenarios"),
                                        lambda: setattr(self, "vue", "scenarios"), 17))
             for b in self.boutons:
                 b.dessiner(surf, souris)
@@ -110,17 +115,56 @@ class SceneMenu:
                    (t("son", mode=t("son_" + reglages.SON)), reglages.changer_son),
                    (t("aides_pilotage", etat=t("oui") if reglages.AIDES else t("non")), reglages.basculer_aides),
                    (t("triche_options", etat=t("triche_autorisee") if reglages.TRICHE else t("triche_desactivee")),
-                    reglages.basculer_triche)]
-        self.boutons = [Bouton((l // 2 - 170, y0 + 50 * k, 340, 42), lib, act, 16)
+                    reglages.basculer_triche),
+                   (t("apropos"), lambda: setattr(self, "vue", "apropos"))]
+        self.boutons = [Bouton((l // 2 - 170, y0 + 46 * k, 340, 40), lib, act, 16)
                         for k, (lib, act) in enumerate(entrees)]
-        yt = y0 + 50 * len(entrees) + 6
+        yt = y0 + 46 * len(entrees) + 6
         ou = t("triche_ou_tactile") if plateforme.TACTILE else t("triche_ou_pc")
         texte(surf, t("triche_intro"), (l // 2, yt), 13, GRIS, ancre="hc")
         texte(surf, ou + ".", (l // 2, yt + 18), 13, GRIS, ancre="hc")
-        self.boutons.append(Bouton((l // 2 - 90, yt + 44, 180, 40), t("retour"),
+        self.boutons.append(Bouton((l // 2 - 90, yt + 42, 180, 40), t("retour"),
                                    lambda: setattr(self, "vue", "principal"), 16))
         for b in self.boutons:
             b.dessiner(surf, souris)
+
+    def _page_reussites(self, surf, l, h, souris):
+        """Jalons cochés et compteurs de carrière, gardés d'une partie à l'autre."""
+        from . import jalons
+        texte(surf, t("reussites_titre"), (l // 2, int(h * 0.30)), 20, BLANC, gras=True, ancre="c")
+        y0 = int(h * 0.30) + 34
+        # la ligne des compteurs, sous le titre
+        pieces = [t("stats_" + cle, n=reglages.STATS.get(cle, 0))
+                  for cle in ("lancements", "etages", "crashs", "amarrages", "poses")
+                  if reglages.STATS.get(cle, 0) > 0]
+        texte(surf, " · ".join(pieces) if pieces else t("stats_aucune"),
+              (l // 2, y0), 13, CYAN, ancre="hc")
+        # les jalons, sur deux colonnes, cochés quand ils sont obtenus
+        y0 += 24
+        cols = 2 if l >= 640 else 1
+        lignes = (len(jalons.JALONS) + cols - 1) // cols
+        lb = min(340, (l - 60) // cols - 8)
+        x0 = (l - cols * lb - (cols - 1) * 12) // 2
+        for i, j in enumerate(jalons.JALONS):
+            c, r = i // lignes, i % lignes
+            fait = j.ident in reglages.JALONS_FAITS
+            texte(surf, ("✓ " if fait else "○ ") + t(j.titre),
+                  (x0 + c * (lb + 12), y0 + r * 30), 14, VERT if fait else GRIS, gras=fait)
+        b = Bouton((l // 2 - 90, y0 + lignes * 30 + 6, 180, 40), t("retour"),
+                   lambda: setattr(self, "vue", "principal"), 16)
+        b.dessiner(surf, souris)
+        self.boutons = [b]
+
+    def _page_apropos(self, surf, l, h, souris):
+        """Version, licences (pygame, DejaVu) et confidentialité."""
+        texte(surf, t("apropos"), (l // 2, int(h * 0.28)), 20, BLANC, gras=True, ancre="c")
+        largeur = min(420, l - 80)
+        texte_multiligne(surf, t("apropos_texte", version=__version__),
+                         (l // 2 - largeur // 2, int(h * 0.28) + 36), largeur, 14, GRIS)
+        b = Bouton((l // 2 - 90, h - 76, 180, 40), t("retour"),
+                   lambda: setattr(self, "vue", "options"), 16)
+        b.dessiner(surf, souris)
+        self.boutons = [b]
 
     def _liste_tutos(self, surf, l, h, souris, genre="tuto"):
         """Tutoriels (ou missions historiques), sur deux colonnes, cochés quand ils sont faits."""

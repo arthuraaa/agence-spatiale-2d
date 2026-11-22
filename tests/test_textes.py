@@ -51,7 +51,7 @@ def test_cles_utilisees():
     brute au joueur, accolades comprises (bug du panneau de carburant)."""
     import glob, io, re
     # clés dynamiques que le scan ne peut pas reconstruire ("Vit. %s" % ..., "son_" + ...)
-    dynamiques = {"Vit. %s", "son_"}
+    dynamiques = {"Vit. %s", "son_", "stats_"}
     utilisees = set()
     chemins = glob.glob(os.path.join(RACINE, "jeu", "*.py")) + [os.path.join(RACINE, "main.py")]
     for chemin in chemins:

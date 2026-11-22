@@ -25,6 +25,7 @@ from .trajectoire import predire, approche_minimale
 from . import manoeuvre as mod_manoeuvre
 from . import plateforme, reglages
 from . import missions as mod_missions
+from . import jalons
 from .textes import t
 
 MODES_SAS = ["stab", "pro", "retro", "rad+", "rad-", "cible", "anti", "manoeuvre"]
@@ -81,6 +82,11 @@ class Univers:
     def dire(self, texte, couleur=BLANC, duree=5.0):
         self.messages.append([texte, duree, couleur])
         del self.messages[:-6]
+
+    def stat(self, cle):
+        """Compte un événement de carrière (lancement, crash...) ; rien pendant un tutoriel."""
+        if not self.tutoriel:
+            reglages.stat(cle)
 
     def piece_debloquee(self, cle):
         m = CATALOGUE[cle]
@@ -213,6 +219,7 @@ class Univers:
         self.actif = v
         self.perdu = False
         self.accel = 0
+        self.stat("lancements")
         conseil = t("Pousse la manette des gaz vers le haut") if plateforme.TACTILE else t("Mets les gaz (Z ou W)")
         if not self.tutoriel:                            # pendant un tutoriel, la bulle explique
             self.dire(t("{nom} est sur le pas de tir. {conseil} pour décoller !", nom=v.nom, conseil=conseil), CYAN, 8)
@@ -249,6 +256,8 @@ class Univers:
         if v.detruit:
             return
         v.detruit = True
+        if not silencieux:                             # les débris nettoyés sans bruit ne comptent pas
+            self.stat("crashs")
         e = self.etat(v)
         a = self.actif
         if not silencieux and a is not None and (a is v or (a.corps is v.corps and
@@ -325,12 +334,14 @@ class Univers:
             self._larguer_boosters(v)
             self.bruit("separation")
             self.dire(t("Boosters largués"), JAUNE, 3)
+            self.stat("etages")
             return
         i = indice_decoupleur_bas(v.pieces)
         if i is None or i == 0:
             self.dire(t("Aucun étage à séparer"), ORANGE, 3)
             return
         self._scinder(v, i, 1.2)
+        self.stat("etages")
         self.bruit("separation")
         self.dire(t("Séparation de l'étage"), JAUNE, 3)
 
@@ -464,6 +475,7 @@ class Univers:
         if (fini or n.consommer(dvx, dvy)) and not getattr(n, "pilote_energie", False):
             ecart = n.dv()
             self.supprimer_noeud()
+            v.drapeaux.add("noeud")                    # un jalon marque la première manœuvre exécutée
             if self.pilote is not None:                # exécution automatique : on coupe net
                 v.gaz = 0.0
             self.dire(t("Manœuvre terminée (écart {ecart} m/s)", ecart="%.2f" % ecart), VERT, 4)
@@ -881,6 +893,7 @@ class Univers:
             for p in v.parachutes():
                 p.parachute, p.ouverture = "plie", 0.0
             v.drapeaux.add("pose:" + c.nom)
+            self.stat("poses")
             if v is self.actif:
                 self.dire(t("Posé sur {corps} ({v:.1f} m/s)", corps=t(c.nom), v=-v_vert), VERT)
                 self.accel = 0
@@ -1062,6 +1075,7 @@ class Univers:
         a.omega = 0.0
         a.drapeaux |= b.drapeaux
         a.drapeaux.add("amarre:" + b.nom)
+        self.stat("amarrages")
         if b.contient_proprietaire(NOM_STATION):
             a.drapeaux.add("amarre:" + NOM_STATION)
         nom_b = b.nom
@@ -1093,8 +1107,9 @@ class Univers:
             self._calculer_approche()
             self.recalculer_plan()
             self._maj_drapeaux()
-            if not self.tutoriel:                      # pas de missions pendant un tutoriel
+            if not self.tutoriel:                      # pas de missions ni de jalons pendant un tutoriel
                 mod_missions.verifier(self)
+                jalons.verifier(self)
         if a is not None and a.noeud is not None and not a.noeud.commencee:
             duree = mod_manoeuvre.duree_combustion(a, a.noeud.dv())[0]
             if self.t > a.noeud.t + max(60.0, duree):          # nœud jamais exécuté : on l'efface

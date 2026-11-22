@@ -857,6 +857,33 @@ TOUT = {
     "Avance le temps ({TEMPS}). Avant l'atmosphère : désamarre Aquarius ({DESAMARRER}), prends les commandes d'Odyssey ({TAPER} dessus, « Contrôler »), et largue son module de service ({ETAGE}).": {"fr": "Avance le temps ({TEMPS}). Avant l'atmosphère : désamarre Aquarius ({DESAMARRER}), prends les commandes d'Odyssey ({TAPER} dessus, « Contrôler »), et largue son module de service ({ETAGE}).", "en": "Speed up time ({TEMPS}). Before the atmosphere: undock Aquarius ({DESAMARRER}), take control of Odyssey ({TAPER} it, “Control”), and drop its service module ({ETAGE})."},
     "Seule la capsule entre dans l'atmosphère. Sous 250 m/s, ouvre le parachute : {PARACHUTE}.": {"fr": "Seule la capsule entre dans l'atmosphère. Sous 250 m/s, ouvre le parachute : {PARACHUTE}.", "en": "Only the capsule enters the atmosphere. Below 250 m/s, open the parachute: {PARACHUTE}."},
     "17 avril 1970 : l'équipage d'Apollo 13 amerrit sain et sauf. On a appelé cette mission « l'échec réussi ».": {"fr": "17 avril 1970 : l'équipage d'Apollo 13 amerrit sain et sauf. On a appelé cette mission « l'échec réussi ».", "en": "April 17, 1970: Apollo 13's crew splashes down safe and sound. This mission came to be called “a successful failure”."},
+
+    # ---- Réussites (jalons et stats de carrière) ----
+    "reussites_titre": {"fr": "Réussites", "en": "Achievements"},
+    "nouveau_jalon": {"fr": "★ Nouveau jalon : {titre}", "en": "★ New achievement: {titre}"},
+    "jalon_haut_t": {"fr": "Haut dans le ciel", "en": "High in the sky"},
+    "jalon_etage_t": {"fr": "Étage largué", "en": "Stage separated"},
+    "jalon_crash_t": {"fr": "Ça arrive aux meilleurs", "en": "It happens to the best"},
+    "jalon_pose_terre_t": {"fr": "Retour au sol", "en": "Back on the ground"},
+    "jalon_evasion_t": {"fr": "Bon voyage", "en": "Farewell"},
+    "jalon_proche_t": {"fr": "À 50 mètres", "en": "Within 50 meters"},
+    "jalon_station_t": {"fr": "Grande station", "en": "Grand station"},
+    "jalon_colosse_t": {"fr": "Colosse", "en": "Colossus"},
+    "jalon_noeud_t": {"fr": "Premier nœud", "en": "First maneuver"},
+    "jalon_mercure_t": {"fr": "Mercure", "en": "Mercury"},
+    "jalon_venus_t": {"fr": "Sous les nuages", "en": "Under the clouds"},
+    "jalon_callisto_t": {"fr": "Callisto", "en": "Callisto"},
+    "jalon_retour_mars_t": {"fr": "Retour de Mars", "en": "Return from Mars"},
+    "stats_aucune": {"fr": "Rien pour l'instant : lance une fusée !", "en": "Nothing yet: launch a rocket!"},
+    "stats_lancements": {"fr": "Lancements : {n}", "en": "Launches: {n}"},
+    "stats_etages": {"fr": "Étages largués : {n}", "en": "Stages dropped: {n}"},
+    "stats_crashs": {"fr": "Vaisseaux perdus : {n}", "en": "Rockets lost: {n}"},
+    "stats_amarrages": {"fr": "Amarrages : {n}", "en": "Dockings: {n}"},
+    "stats_poses": {"fr": "Atterrissages : {n}", "en": "Landings: {n}"},
+
+    # ---- À propos ----
+    "apropos": {"fr": "À propos", "en": "About"},
+    "apropos_texte": {"fr": "Agence Spatiale 2D, version {version}.\n\nCe jeu est réalisé avec pygame (licence LGPL) et les polices DejaVu (licence libre) : le détail est dans LICENCES.md, à côté du jeu.\n\nAucune donnée n'est collectée : le jeu ne demande aucune permission et ne se connecte à rien.", "en": "Agence Spatiale 2D, version {version}.\n\nThis game is built with pygame (LGPL license) and the DejaVu fonts (free license): details are in LICENCES.md, next to the game.\n\nNo data is collected: the game asks for no permission and connects to nothing."},
 }
 
 # Langue imposée par la variable d'environnement (tests, captures) — même

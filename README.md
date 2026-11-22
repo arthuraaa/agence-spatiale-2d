@@ -149,11 +149,16 @@ Options ; raccourci : **appui long sur l'horloge**, ou `F12` sur PC), la colonne
 revenir 30 s en arrière (le jeu photographie la partie toutes les 5 s), faire le plein,
 carburant infini, vaisseau indestructible, mise en orbite immédiate et, en carrière,
 +50 000 de fonds ou toutes les pièces débloquées. Les options restent dans la sauvegarde.
+Le menu Options contient aussi un écran **À propos** (version, licences pygame et DejaVu,
+confidentialité).
 
 ## Déroulement
 
 - **Menu** : *Nouvelle carrière* (budget de 25 000, pièces à débloquer grâce aux missions)
-  ou *Bac à sable* (tout est débloqué, pas d'argent).
+  ou *Bac à sable* (tout est débloqué, pas d'argent). La page **Réussites** coche les
+  **jalons** (première orbite, premier crash, posés sur Mercure ou Callisto...) et affiche
+  les compteurs de carrière (lancements, étages largués, vaisseaux perdus...) : ils sont
+  gardés d'une partie à l'autre et annoncés en vol (« ★ Nouveau jalon »).
 - **Hangar** : clique sur les pièces à gauche pour les empiler **du nez vers le moteur**.
   Un clic sur une pièce de la fusée la sélectionne (`Suppr` la retire, `↑ ↓` la déplace,
   une nouvelle pièce s'insère juste en dessous). À droite : masse, prix, Δv et poussée/poids

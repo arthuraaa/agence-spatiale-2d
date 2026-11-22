@@ -8,6 +8,8 @@ SON = "tout"          # "tout", "sans_musique", "effets" (bruitages seuls) ou "a
 TUTOS_FAITS = []      # identifiants des tutoriels terminés
 TRICHE = True         # la triche est proposée en vol (menu Options)
 LANGUE = ""           # "fr", "en", ou "" = langue du système (jeu/textes.py)
+JALONS_FAITS = []     # identifiants des jalons obtenus (jeu/jalons.py), gardés d'une partie à l'autre
+STATS = {}            # compteurs de carrière : lancements, etages, crashs, amarrages, poses
 NOMS_SON = {"tout": "tout", "sans_musique": "sans musique", "effets": "effets seuls", "aucun": "coupé"}
 
 
@@ -17,7 +19,7 @@ def _chemin():
 
 
 def charger():
-    global AIDES, SON, TUTOS_FAITS, TRICHE, LANGUE
+    global AIDES, SON, TUTOS_FAITS, TRICHE, LANGUE, JALONS_FAITS, STATS
     try:
         with open(_chemin(), encoding="utf-8") as f:
             d = json.load(f)
@@ -33,6 +35,12 @@ def charger():
     TRICHE = bool(d.get("triche", True))
     langue = d.get("langue", "")
     LANGUE = langue if isinstance(langue, str) and langue in ("", "fr", "en") else ""
+    jalons = d.get("jalons", [])
+    JALONS_FAITS = [x for x in jalons if isinstance(x, str)] if isinstance(jalons, list) else []
+    stats = d.get("stats", {})
+    STATS = {k: int(v) for k, v in stats.items()
+             if isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool)} \
+        if isinstance(stats, dict) else {}
 
 
 def _ecrire():
@@ -41,7 +49,7 @@ def _ecrire():
         tmp = _chemin() + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"aides": AIDES, "son": SON, "tutos": TUTOS_FAITS, "triche": TRICHE,
-                       "langue": LANGUE}, f)
+                       "langue": LANGUE, "jalons": JALONS_FAITS, "stats": STATS}, f)
         os.replace(tmp, _chemin())
     except OSError:
         pass
@@ -65,6 +73,18 @@ def tuto_fait(ident):
     if ident not in TUTOS_FAITS:
         TUTOS_FAITS.append(ident)
         _ecrire()
+
+
+def jalon_fait(ident):
+    if ident not in JALONS_FAITS:
+        JALONS_FAITS.append(ident)
+        _ecrire()
+
+
+def stat(cle, n=1):
+    """Incrémente un compteur de carrière (lancements, crashs...)."""
+    STATS[cle] = STATS.get(cle, 0) + n
+    _ecrire()
 
 
 def basculer_triche():
