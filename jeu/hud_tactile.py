@@ -265,7 +265,8 @@ class HudTactile(Hud):
         rvx, rvy = u.vitesse_reference(a)
         o = a.orbite if a.mode != "pose" else None
         valide = o is not None and not o.degeneree
-        lignes = [(t("Altitude"), fmt_distance(r - c.R - a.geometrie().bas if a.mode != "pose" else 0.0)),
+        lignes = [(t("Altitude"), fmt_distance(u.altitude(a) - a.geometrie().bas
+                                               if a.mode != "pose" else 0.0)),
                   (t("Vit. %s" % a.ref_vitesse), fmt_vitesse(hypot(rvx, rvy))),
                   (t("Vit. verticale"), fmt_vitesse(v_vert)),
                   (t("Apoapside"), (fmt_distance(o.ra - c.R) if o.elliptique else t("évasion")) if valide else "—"),

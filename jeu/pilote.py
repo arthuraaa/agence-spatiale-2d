@@ -399,7 +399,7 @@ class Atterrissage(Programme):
         v.ref_vitesse, v.sas = "surface", "retro"
         x, y, vx, vy = u.etat(v)
         r = hypot(x, y)
-        hauteur = r - c.R - v.geometrie().bas            # du bas du vaisseau jusqu'au sol
+        hauteur = u.altitude(v) - v.geometrie().bas      # du bas du vaisseau jusqu'au terrain
         svx, svy = _vitesse_surface(c, x, y, vx, vy)
         v_vert = (svx * x + svy * y) / r
         vitesse = hypot(svx, svy)
@@ -818,7 +818,7 @@ def infos_atterrissage(u, v):
     x, y, vx, vy = u.etat(v)
     r = hypot(x, y)
     bas = v.geometrie().bas
-    alt = r - c.R - bas
+    alt = u.altitude(v) - bas                        # hauteur du bas au-dessus du terrain
     svx, svy = _vitesse_surface(c, x, y, vx, vy)
     v_vert = (svx * x + svy * y) / r
     if v_vert >= 0.0:                            # on monte (décollage, avant l'apoapside) : rien à dire

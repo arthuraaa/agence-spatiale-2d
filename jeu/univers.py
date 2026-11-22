@@ -123,10 +123,10 @@ class Univers:
         return vx, vy
 
     def etat_pose(self, v, t=None):
-        """État d'un vaisseau posé : il tourne avec le sol."""
+        """État d'un vaisseau posé : il tourne avec le sol, posé sur le terrain."""
         c = v.corps
         t = self.t if t is None else t
-        r = c.R + v.geometrie().bas
+        r = c.R + c.relief(v.longitude) + v.geometrie().bas
         ang = v.longitude + c.angle_rotation(t)
         w = c.vitesse_rotation
         return r * cos(ang), r * sin(ang), -w * r * sin(ang), w * r * cos(ang)
@@ -157,8 +157,11 @@ class Univers:
         return vx + e[2], vy + e[3]
 
     def altitude(self, v):
+        """Hauteur au-dessus du terrain (et non de la sphère de rayon R)."""
         e = self.etat(v)
-        return hypot(e[0], e[1]) - v.corps.R
+        c = v.corps
+        return hypot(e[0], e[1]) - c.R \
+            - c.relief(atan2(e[1], e[0]) - c.angle_rotation(self.t))
 
     def vitesse_reference(self, v):
         """Vecteur vitesse selon la référence choisie (orbite / surface / cible)."""
@@ -699,12 +702,15 @@ class Univers:
         v.vx = vx = vx + h * (a1x + 2 * a2x + 2 * a3x + a4x) / 6
         v.vy = vy = vy + h * (a1y + 2 * a2y + 2 * a3y + a4y) / 6
 
-        # --- contact avec le sol (par le bas ou par le nez)
+        # --- contact avec le sol (par le bas ou par le nez) ; le terrain a du relief
         r = hypot(x, y)
-        if r - max(g.bas, g.haut) <= c.R:
-            rb = hypot(x - ca * g.bas, y - sa * g.bas)
-            rh = hypot(x + ca * g.haut, y + sa * g.haut)
-            if min(rb, rh) <= c.R:
+        if r - max(g.bas, g.haut) <= c.R + c.relief_max:
+            rot = c.angle_rotation(self.t + h)
+            rb = hypot(x - ca * g.bas, y - sa * g.bas) \
+                - c.R - c.relief(atan2(y - sa * g.bas, x - ca * g.bas) - rot)
+            rh = hypot(x + ca * g.haut, y + sa * g.haut) \
+                - c.R - c.relief(atan2(y + sa * g.haut, x + ca * g.haut) - rot)
+            if min(rb, rh) <= 0.0:
                 vr = ((vx + w * y) * x + (vy - w * x) * y) / r
                 if vr <= 0.0:
                     self._toucher(v, x, y, vx, vy, self.t + h)

@@ -624,6 +624,7 @@ def _dessiner_corps(surf, u, cam, c, fond):
             sol = melange(melange(c.couleur_nuit, c.couleur, jour),
                           melange(c.couleur_sol_nuit, c.couleur_sol, jour), f)
             disque(surf, sol, sx, sy, rp)
+            _terrain_relief(surf, u, cam, c, bx, by, sol)
             _decor_sol(surf, u, cam, c, melange(sol, NOIR, 0.15))
         else:
             disque(surf, c.couleur, sx, sy, rp)
@@ -648,6 +649,29 @@ def _dessiner_corps(surf, u, cam, c, fond):
         texte(surf, t(c.nom), (sx, sy + max(rp, 3) + 4), 13, melange(GRIS, c.couleur, 0.4), ancre="hc")
 
 
+def _terrain_relief(surf, u, cam, c, bx, by, couleur):
+    """Silhouette bosselée du terrain, vue de près : remplace le bord lisse du disque."""
+    if c.relief_max <= 0.0:
+        return
+    z = cam.zoom
+    ang0 = atan2(cam.y - by, cam.x - bx)              # direction du sol sous la caméra
+    # demi-largeur angulaire : le coin de l'écran, plus une marge bornée (40 px, pas 0.05*R*z !)
+    demi = min(pi, (hypot(cam.l, cam.h) / 2 + 40) / z / c.R)
+    pas = max(2, min(500, int(demi * c.R * z / 8.0)))  # un point tous les ~8 px, 500 au plus
+    rot = c.angle_rotation(u.t)
+    pts = []
+    for i in range(-pas, pas + 1):
+        a = ang0 + demi * i / pas
+        r = c.R + c.relief(a - rot)
+        pts.append(cam.vers_ecran(bx + r * cos(a), by + r * sin(a)))
+    # referme juste sous le bord (en espace écran) : fermer par l'intérieur du corps
+    # ferait un polygone aux coordonnées énormes, que pygame scanne très lentement
+    bas = cam.l + cam.h + 100.0                       # assez bas pour couvrir l'écran
+    pts.append((pts[-1][0], pts[-1][1] + bas))
+    pts.append((pts[0][0], pts[0][1] + bas))
+    pygame.draw.polygon(surf, couleur, pts)
+
+
 def _decor_sol(surf, u, cam, c, couleur):
     """Cailloux réguliers au sol : donnent la sensation de vitesse près de la surface."""
     bx, by = u.position_corps(c)
@@ -660,7 +684,8 @@ def _decor_sol(surf, u, cam, c, couleur):
     for k in range(k0 - 14, k0 + 15):
         ang = k * esp / c.R + rot
         t = 2 + (k * 7919) % 5
-        px, py = cam.vers_ecran(bx + (c.R - 0.2 * t / cam.zoom) * cos(ang), by + (c.R - 0.2 * t / cam.zoom) * sin(ang))
+        rh = c.R + c.relief(k * esp / c.R) - 0.2 * t / cam.zoom
+        px, py = cam.vers_ecran(bx + rh * cos(ang), by + rh * sin(ang))
         if -10 < px < cam.l + 10 and -10 < py < cam.h + 10:
             pygame.draw.circle(surf, fonce, (int(px), int(py)), t)
 

@@ -189,7 +189,8 @@ class Hud:
         w = c.vitesse_rotation
         v_vert = ((vx + w * y) * x + (vy - w * x) * y) / r
         o = a.orbite if a.mode != "pose" else None
-        lignes = [(t("Altitude"), fmt_distance(r - c.R - a.geometrie().bas if a.mode != "pose" else 0.0)),
+        lignes = [(t("Altitude"), fmt_distance(u.altitude(a) - a.geometrie().bas
+                                               if a.mode != "pose" else 0.0)),
                   (t("Vitesse ({ref})", ref=a.ref_vitesse), fmt_vitesse(hypot(rvx, rvy))),
                   (t("Vit. verticale"), fmt_vitesse(v_vert))]
         if o is not None and not o.degeneree:

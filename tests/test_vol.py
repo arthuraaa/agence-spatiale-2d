@@ -168,7 +168,7 @@ def test_alunissage(u, v):
             break
         x, y, vx, vy = u.etat(v)
         r = hypot(x, y)
-        alt = r - lune.R - v.geometrie().bas
+        alt = u.altitude(v) - v.geometrie().bas      # jusqu'au terrain (il y a du relief)
         w = lune.vitesse_rotation
         rvx, rvy = vx + w * y, vy - w * x
         sp = hypot(rvx, rvy)

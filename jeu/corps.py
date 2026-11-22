@@ -11,14 +11,16 @@ l'échelle 1/10 pour rester jouables.
 Les corps suivent des orbites circulaires « sur rails » autour de leur parent.
 """
 from math import cos, sin, sqrt, pi
-from .orbite import TAU, INFINI
+from zlib import crc32
+from .orbite import TAU, INFINI, angle_pi
+from .constantes import LONGITUDE_PAS_DE_TIR
 
 
 class Corps:
     def __init__(self, nom, rayon, g, parent=None, a=0.0, phase=0.0,
                  couleur=(150, 150, 150), atmosphere=None, rotation=0.0,
                  gazeux=False, etoile=False, taches=(), anneaux=None,
-                 couleur_nuit=None, couleur_sol=None):
+                 couleur_nuit=None, couleur_sol=None, pas_de_tir=False):
         self.nom = nom
         self.R = float(rayon)                 # rayon (m)
         self.g = g                            # gravité de surface (m/s²)
@@ -51,6 +53,17 @@ class Corps:
         if rotation is None:
             rotation = self.periode
         self.vitesse_rotation = TAU / rotation if rotation else 0.0   # rad/s
+        # relief du terrain : quelques ondulations, déterministes (graine = nom du corps),
+        # donc les mêmes collines d'une partie à l'autre et d'un appareil à l'autre
+        self.pas_de_tir = pas_de_tir
+        if self.gazeux:
+            self.relief_max, self._ondes = 0.0, ()    # pas de surface solide
+        else:
+            graine = crc32(nom.encode("utf-8"))
+            self.relief_max = 0.01 * self.R           # plafond de hauteur des collines (m)
+            self._ondes = tuple(                      # (pulsation, amplitude, phase)
+                (k, a, ((graine >> (8 * i)) & 255) / 255.0 * TAU)
+                for i, (k, a) in enumerate(((6.0, 0.40), (19.0, 0.40), (60.0, 0.35))))
 
     # --- position relative au parent ---------------------------------------
     def position_relative(self, t):
@@ -84,6 +97,20 @@ class Corps:
             return 0.0
         return self.rho0 * exp(-max(0.0, altitude) / self.H)
 
+    def relief(self, longitude):
+        """Hauteur du terrain (m) au-dessus du rayon R, à cette longitude (repère lié au sol)."""
+        if not self._ondes:
+            return 0.0
+        s = 0.0
+        for k, a, p in self._ondes:
+            s += a * sin(k * longitude + p)
+        h = self.relief_max * (0.5 + 0.43 * s)      # 0 ≤ h ≤ relief_max (somme des a < 1/0.43)
+        if self.pas_de_tir:                         # zone plate autour du pas de tir
+            d = abs(angle_pi(longitude - LONGITUDE_PAS_DE_TIR))
+            if d < 0.05:
+                return h * d / 0.05
+        return h
+
     def ancetres(self):
         c, out = self, []
         while c is not None:
@@ -108,7 +135,7 @@ def creer_systeme_solaire():
                   taches=[(1.0, 0.45, 0.30, (236, 205, 140)), (3.6, 0.5, 0.35, (214, 176, 108))])
     terre = Corps("Terre", 63_710, 9.81, soleil, 1.496e9, 0.0, (52, 104, 190),
                   atmosphere=(7_000, 1.225, 850, (110, 170, 255)), rotation=8_616.4,
-                  couleur_nuit=(14, 28, 60), couleur_sol=(74, 128, 72),
+                  couleur_nuit=(14, 28, 60), couleur_sol=(74, 128, 72), pas_de_tir=True,
                   taches=[(0.3, 0.55, 0.30, (74, 150, 84)), (1.5, 0.50, 0.24, (96, 160, 90)),
                           (2.6, 0.62, 0.26, (180, 160, 100)), (3.9, 0.48, 0.33, (70, 140, 80)),
                           (5.2, 0.60, 0.22, (90, 150, 86)), (0.0, 0.0, 0.16, (240, 244, 250))])

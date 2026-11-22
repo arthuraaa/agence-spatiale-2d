@@ -149,7 +149,7 @@ def fin_de_troncon(orb, corps, ta, garde=0.0):
     if corps.atm_h > 0.0 and hypot(x, y) > r_atm:
         r_lim, genre = r_atm, "atmo"
     else:
-        r_lim, genre = corps.R + garde, "impact"
+        r_lim, genre = corps.R + garde + corps.relief_max, "impact"
     if orb.rp < r_lim:
         d = orb.delai_jusquau_rayon(r_lim, ta, en_descente=True)
         if d is not None:

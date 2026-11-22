@@ -238,6 +238,8 @@ alors « sur rails » : sa position est calculée exactement, jusqu'à x1 000 00
 Le jeu ralentit tout seul avant une rentrée atmosphérique ou un impact.
 Pendant une rentrée trop rapide, la coque s'entoure de plasma, l'écran rougeoye,
 la vue vibre et un grondement sourd monte : freine, ou tu vas brûler.
+Les corps ont du **relief** : collines et vallées dessinées et prises en compte par la
+physique (contact, altitude, pose). Choisis ton site d'atterrissage, le pas de tir est plat.
 
 ## Premier vol : se mettre en orbite
 
