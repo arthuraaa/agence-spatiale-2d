@@ -4,7 +4,7 @@ import json
 import os
 
 AIDES = True          # aides au pilotage : pilote automatique, assistants, atterrissage, docking
-SON = "tout"          # "tout" (bruitages + ambiance), "effets" (bruitages seuls) ou "aucun"
+SON = "tout"          # "tout", "sans_musique", "effets" (bruitages seuls) ou "aucun"
 TUTOS_FAITS = []      # identifiants des tutoriels terminés
 TRICHE = True         # la triche est proposée en vol (menu Options)
 LANGUE = ""           # "fr", "en", ou "" = langue du système (jeu/textes.py)
@@ -23,18 +23,26 @@ def charger():
             d = json.load(f)
     except (OSError, ValueError):
         return
+    if not isinstance(d, dict):                       # fichier corrompu : on repart des défauts
+        return
     AIDES = bool(d.get("aides", True))
-    SON = d.get("son", "tout") if d.get("son") in NOMS_SON else "tout"
-    TUTOS_FAITS = [t for t in d.get("tutos", []) if isinstance(t, str)]
+    son = d.get("son", "tout")
+    SON = son if isinstance(son, str) and son in NOMS_SON else "tout"
+    tutos = d.get("tutos", [])
+    TUTOS_FAITS = [x for x in tutos if isinstance(x, str)] if isinstance(tutos, list) else []
     TRICHE = bool(d.get("triche", True))
-    LANGUE = d.get("langue", "") if d.get("langue", "") in ("", "fr", "en") else ""
+    langue = d.get("langue", "")
+    LANGUE = langue if isinstance(langue, str) and langue in ("", "fr", "en") else ""
 
 
 def _ecrire():
     try:
-        with open(_chemin(), "w", encoding="utf-8") as f:
+        # écriture atomique : un coupure de courant ne laisse pas un reglages.json à moitié écrit
+        tmp = _chemin() + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"aides": AIDES, "son": SON, "tutos": TUTOS_FAITS, "triche": TRICHE,
                        "langue": LANGUE}, f)
+        os.replace(tmp, _chemin())
     except OSError:
         pass
 
@@ -46,7 +54,7 @@ def basculer_aides():
 
 
 def changer_son():
-    """Tout -> effets seuls -> coupé -> tout."""
+    """Tout -> sans musique -> effets seuls -> coupé -> tout."""
     global SON
     ordre = list(NOMS_SON)
     SON = ordre[(ordre.index(SON) + 1) % len(ordre)]

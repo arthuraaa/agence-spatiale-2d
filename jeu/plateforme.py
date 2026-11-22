@@ -56,7 +56,10 @@ def ouvrir_fenetre(pygame, largeur_pc, hauteur_pc):
     largeur, hauteur = info.current_w, info.current_h
     simule = os.environ.get("AGENCE_ECRAN", "")         # ex. AGENCE_ECRAN=2400x1080 : écran simulé
     if "x" in simule:
-        largeur, hauteur = (int(v) for v in simule.lower().split("x"))
+        try:
+            largeur, hauteur = (int(v) for v in simule.lower().split("x"))
+        except ValueError:                              # valeur tordue (« 100x »…) : écran réel
+            pass
     taille = taille_logique(largeur, hauteur)
     options = pygame.SCALED | (pygame.FULLSCREEN if sur_android() else 0)
     try:

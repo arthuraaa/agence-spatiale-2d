@@ -53,7 +53,8 @@ def test_cles_utilisees():
     # clés dynamiques que le scan ne peut pas reconstruire ("Vit. %s" % ..., "son_" + ...)
     dynamiques = {"Vit. %s", "son_"}
     utilisees = set()
-    for chemin in glob.glob(os.path.join(RACINE, "jeu", "*.py")):
+    chemins = glob.glob(os.path.join(RACINE, "jeu", "*.py")) + [os.path.join(RACINE, "main.py")]
+    for chemin in chemins:
         if chemin.endswith("textes.py"):
             continue                       # ses exemples de docstring ne sont pas des clés
         src = io.open(chemin, encoding="utf-8").read()

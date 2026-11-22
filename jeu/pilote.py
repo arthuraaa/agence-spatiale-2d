@@ -87,8 +87,11 @@ class ExecuterNoeud(Programme):
         if n is None:                                  # nœud consommé : c'est fini
             v.gaz = 0.0
             return False
-        if self.but is None and not n.commencee:
-            self._choisir_but(v, n)
+        if self.but is None:
+            if n.commencee:                                # combustion déjà lancée (à la main) :
+                self.but = "noeud"                         # on suit le nœud tel quel, sans crash
+            else:
+                self._choisir_but(v, n)
         allumage = mod_man.instant_allumage(v, n)
         if not n.commencee and u.t < allumage - 30.0:  # on patiente en accélérant le temps
             v.sas, v.gaz = "manoeuvre", 0.0

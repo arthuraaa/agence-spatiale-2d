@@ -33,7 +33,9 @@ jobs:
 
       # Le SDK/NDK Android et les bibliothèques compilées restent en cache d'un
       # lancement à l'autre. La clé dépend de buildozer.spec : changer une exigence
-      # (android.ndk, requirements…) reconstruit tout, sinon on réutilise l'ancien cache.
+      # (android.ndk, requirements…) reconstruit tout. Nuance : android.numeric_version
+      # change à chaque version, donc la clé exacte change aussi — restore-keys
+      # réutilise alors le cache le plus récent, seule l'entrée se recrée.
       - name: Cache de construction
         uses: actions/cache@v4
         with:
@@ -85,6 +87,10 @@ jobs:
           CLE_B64: ${{ secrets.AGENCY_CLE_B64 }}
         run: |
           mkdir -p ~/.agence-spatiale && chmod 700 ~/.agence-spatiale
+          if [ -z "$CLE_B64" ]; then
+            echo "Secret AGENCY_CLE_B64 absent ou vide : pas de clé d'envoi (voir PUBLICATION.md)"
+            exit 1
+          fi
           echo "$CLE_B64" | base64 -d > ~/.agence-spatiale/cle-envoi.jks
 
       # P4A_RELEASE_* : variables lues par python-for-android pour signer l'AAB

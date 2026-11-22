@@ -178,14 +178,13 @@ TOUT = {
     "Il y a déjà un nœud de manœuvre (Suppr pour l'effacer)": {
         "fr": "Il y a déjà un nœud de manœuvre (Suppr pour l'effacer)",
         "en": "There is already a maneuver node (Del to clear it)"},
-    "Il faut être en vol pour planifier une manœuvre": {
-        "fr": "Il faut être en vol pour planifier une manœuvre",
-        "en": "You must be in flight to plan a maneuver"},
     "Nœud posé : tire les poignées pour régler le Δv": {
         "fr": "Nœud posé : tire les poignées pour régler le Δv",
         "en": "Node placed: drag the handles to set the Δv"},
     "Pas de sauvegarde pendant un tutoriel": {"fr": "Pas de sauvegarde pendant un tutoriel",
                                               "en": "No saving during a tutorial"},
+    "Pas de chargement pendant un tutoriel": {"fr": "Pas de chargement pendant un tutoriel",
+                                              "en": "No loading during a tutorial"},
     "Partie sauvegardée": {"fr": "Partie sauvegardée", "en": "Game saved"},
     "Sauvegarde impossible : {err}": {"fr": "Sauvegarde impossible : {err}", "en": "Could not save: {err}"},
     "Rien à rembobiner pour l'instant": {"fr": "Rien à rembobiner pour l'instant",
@@ -521,7 +520,6 @@ TOUT = {
     "Suppr ou ✕ = retirer · ↑ ↓ ou ▲ ▼ = déplacer": {
         "fr": "Suppr ou ✕ = retirer · ↑ ↓ ou ▲ ▼ = déplacer",
         "en": "Del or ✕ = remove · ↑ ↓ or ▲ ▼ = move"},
-    "LANCER": {"fr": "LANCER", "en": "LAUNCH"},
     "Modèles…": {"fr": "Modèles…", "en": "Blueprints…"},
     "Tout vider": {"fr": "Tout vider", "en": "Clear all"},
     "Suivi des vols": {"fr": "Suivi des vols", "en": "Flight tracking"},
@@ -647,7 +645,6 @@ TOUT = {
     "Jour {j}  {h:02d}:{m:02d}:{s:02d}": {"fr": "Jour {j}  {h:02d}:{m:02d}:{s:02d}", "en": "Day {j}  {h:02d}:{m:02d}:{s:02d}"},
 
     # ---- Missions de carrière, tutoriels et scénarios
-    "Premier décollage": {"fr": "Premier décollage", "en": "First liftoff"},
     "Dépasser 1 km d'altitude.": {"fr": "Dépasser 1 km d'altitude.", "en": "Climb above 1 km."},
     "Dans l'espace": {"fr": "Dans l'espace", "en": "Into space"},
     "Sortir de l'atmosphère (7 km).": {"fr": "Sortir de l'atmosphère (7 km).", "en": "Leave the atmosphere (7 km)."},
@@ -793,7 +790,7 @@ TOUT = {
     "Pas encore prêt : {txt}": {"fr": "Pas encore prêt : {txt}", "en": "Not ready yet: {txt}"},
     "OUPS !": {"fr": "OUPS !", "en": "OOPS!"},
     "Ta fusée s'est écrasée. Pas de panique : ça arrive à tous les astronautes !": {"fr": "Ta fusée s'est écrasée. Pas de panique : ça arrive à tous les astronautes !", "en": "Your rocket crashed. Don't panic: it happens to every astronaut!"},
-    "conseil_prefixe": {"fr": "conseil_prefixe", "en": " Tip: "},
+    "conseil_prefixe": {"fr": " Astuce : ", "en": " Tip: "},
     "MISSION ACCOMPLIE !": {"fr": "MISSION ACCOMPLIE !", "en": "MISSION COMPLETE!"},
     "Mission « {titre} » réussie.": {"fr": "Mission « {titre} » réussie.", "en": "Mission “{titre}” complete."},
     " La suivante : « {titre} ».": {"fr": " La suivante : « {titre} ».", "en": " Next up: “{titre}”."},

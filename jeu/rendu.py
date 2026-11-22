@@ -167,7 +167,9 @@ def disque(surf, couleur, cx, cy, r):
         surf.fill(couleur)
         return
     a0 = atan2(my - cy, mx - cx)
-    ouverture = min(pi, 2.2 * demi / (r - demi) + 0.02)
+    # r - demi peut s'annuler (disque immense centré sur un grand écran) : on borne, et
+    # l'ouverture est alors clampée à pi (le polygone couvre le disque entier)
+    ouverture = min(pi, 2.2 * demi / max(r - demi, 1e-6) + 0.02)
     n = 48
     pts = [(cx + r * cos(a0 - ouverture + 2 * ouverture * k / n),
             cy + r * sin(a0 - ouverture + 2 * ouverture * k / n)) for k in range(n + 1)]
@@ -494,14 +496,17 @@ _OMBRES = {}          # cache des ombres tournées / mises à l'échelle
 
 def _ombre_nuit(surf, sx, sy, rp, a0):
     """Assombrit le côté nuit d'un corps (centre sx,sy, rayon rp, nuit vers a0)."""
-    taille = (max(16, min(int(2 * rp), 1024)) + 31) // 32 * 32     # toujours ≥ 2rp
+    taille = (max(16, min(int(2 * rp), 3 * RAYON_GRAND_CERCLE)) + 31) // 32 * 32  # toujours ≥ 2rp
     cle = (int(a0 * 28.65 / 4), taille)            # angle quantisé par pas de 4°
     ombre = _OMBRES.get(cle)
     if ombre is None:
         ombre = pygame.transform.rotozoom(_OMBRE, -degrees(a0), taille / 128.0)
-        if len(_OMBRES) > 24:
-            _OMBRES.clear()
         _OMBRES[cle] = ombre
+        # budget mémoire : les grosses ombres coûtent cher, on jette les plus anciennes
+        pixels = sum(o.get_width() * o.get_height() for o in _OMBRES.values())
+        while len(_OMBRES) > 1 and pixels > 12_000_000:
+            vieille = _OMBRES.pop(next(iter(_OMBRES)))
+            pixels -= vieille.get_width() * vieille.get_height()
     surf.blit(ombre, ombre.get_rect(center=(int(sx), int(sy))))
 
 

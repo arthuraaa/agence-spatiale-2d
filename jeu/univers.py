@@ -456,7 +456,12 @@ class Univers:
             if vec is None:
                 return
             n.commencer(vec)
-        if n.consommer(dvx, dvy) and not getattr(n, "pilote_energie", False):
+            fini = hypot(vec[0], vec[1]) < mod_manoeuvre.FIN_MANOEUVRE
+            if fini:
+                n.consommer(0.0, 0.0)                  # nœud à Δv nul : rien à brûler, déjà fini
+        else:
+            fini = False
+        if (fini or n.consommer(dvx, dvy)) and not getattr(n, "pilote_energie", False):
             ecart = n.dv()
             self.supprimer_noeud()
             if self.pilote is not None:                # exécution automatique : on coupe net
@@ -471,6 +476,7 @@ class Univers:
         if not reglages.AIDES or self.actif is None:
             return
         self.pilote = programme
+        self.commandes.avant = self.commandes.cote = 0   # pas d'ordre RCS résiduel (amarrage auto)
         self.dire(t("Pilote automatique : {nom}", nom=t(programme.nom)), CYAN, 4)
 
     def arreter_pilote(self, fin=False):
@@ -883,7 +889,7 @@ class Univers:
     def _besoin_physique(self, v):
         if self.altitude(v) < v.corps.atm_h:
             return True
-        if v.gaz > 0.0 and v.moteur_actif() is not None and v.carburant_actif()[0] > 0.0:
+        if v.gaz > 0.0 and v.poussee_et_debit(1.0)[0] > 0.0:   # moteur central OU boosters qui brûlent
             return True
         cmd = self.commandes
         return bool(v.rcs and (cmd.avant or cmd.cote) and v.mono() > 0.0)
@@ -962,9 +968,15 @@ class Univers:
         mode_avant = v.mode
 
         def centre(a, b):
-            m = sum(p.masse() for p in v.pieces[a:b])
-            ym = sum(p.masse() * 0.5 * (s[0] + s[1])
-                     for p, s in zip(v.pieces[a:b], g.segments[a:b])) / m
+            # masse et centre de la tranche, boosters latéraux compris (comme geometrie()) ;
+            # une pile de g.laterales = DEUX boosters (miroir gauche/droite)
+            morceaux = [(p.masse(), 0.5 * (s[0] + s[1]))
+                        for p, s in zip(v.pieces[a:b], g.segments[a:b])]
+            for k, pile, _, segs, _ in g.laterales:
+                if a <= k < b:
+                    morceaux += [(2.0 * q.masse(), 0.5 * (s[0] + s[1])) for q, s in zip(pile, segs)]
+            m = sum(m0 for m0, _ in morceaux)
+            ym = sum(m0 * y for m0, y in morceaux) / m
             return m, ym
 
         m_h, y_h = centre(0, i)

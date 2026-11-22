@@ -79,6 +79,8 @@ class Application:
 
     def aller_hangar(self):
         from jeu.hangar import SceneHangar
+        if self.tuto is not None and not self.tuto.pour_hangar:
+            self.tuto = None              # un tuto de vol ne suit pas le joueur au hangar
         self.scene = SceneHangar(self)
 
     def humeur_musique(self):
@@ -111,7 +113,7 @@ class Application:
         self.tuto = None
         try:
             self.univers = sauvegarde.charger()
-        except (OSError, ValueError, KeyError) as e:
+        except (OSError, ValueError, KeyError, IndexError) as e:
             print("Chargement impossible :", e)
             return
         self.aller_vol()

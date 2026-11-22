@@ -53,13 +53,21 @@ def decalage_donnees(fichier, info):
     return info.header_offset + 30 + nom + extra
 
 
+def cle_version_buildtools(chemin):
+    """« 36.0.0 » après « 9.0.0 » : tri numérique du dossier build-tools, pas alphabétique."""
+    try:
+        return tuple(int(x) for x in os.path.basename(os.path.dirname(chemin)).split("."))
+    except ValueError:
+        return (0,)
+
+
 def trouver_aapt2():
     candidats = []
     for base in (os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"),
                  os.path.expanduser("~/.buildozer/android/platform/android-sdk")):
         if base:
             candidats += glob.glob(os.path.join(base, "build-tools", "*", "aapt2"))
-    return sorted(candidats)[-1] if candidats else None
+    return max(candidats, key=cle_version_buildtools) if candidats else None
 
 
 def verifier(chemin):
@@ -75,6 +83,9 @@ def verifier(chemin):
         mal = []
         for info in libs:
             abi = info.filename.split("/")[-2]
+            if not aab and info.compress_type != zipfile.ZIP_STORED:
+                notes.append("%s compressée dans l'APK (Google Play attend une bibliothèque "
+                             "stockée, extractNativeLibs=false)" % info.filename)
             if abi not in ABI_64:
                 continue
             align = alignement_elf(z.read(info))

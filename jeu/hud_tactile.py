@@ -203,8 +203,10 @@ class HudTactile(Hud):
         lignes = lignes_cible(u, a)[:8]
         amarrage = lignes_amarrage(u, a) if reglages.AIDES and lignes else None
         if amarrage:            # docking : dans le panneau de la cible (la croix RCS occupe la gauche)
-            lignes = lignes[:6] + [(t("Au port") if n.startswith("Distance") else n, v, c) for n, v, c in amarrage
-                                   if n in ("Distance au port", "Écart latéral", "Alignement")]
+            # filtre sur les CLÉS (lignes_amarrage ne traduit pas) : marche dans les deux langues
+            lignes = lignes[:6] + [(t("Au port") if cle == "Distance au port" else t(cle), v, c)
+                                   for cle, v, c in amarrage
+                                   if cle in ("Distance au port", "Écart latéral", "Alignement")]
         if lignes:
             x = l - MX - L_PANNEAU
             panneau(surf, (x, M + 52, L_PANNEAU, 12 + 19 * len(lignes)))

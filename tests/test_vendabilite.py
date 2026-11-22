@@ -137,7 +137,7 @@ def test_icone_lisible():
     print("   icône 48 px : contraste=%.0f (doit être > 40 pour rester lisible)" % contraste)
     assert contraste > 40, "icône trop plate une fois réduite à 48 px : on ne distingue plus rien"
     # Les trois canaux ne doivent pas être identiques (icône toute grise = indistincte).
-    assert max(moyennes) - min(moyennes) > 40 or len(set(moyennes)) > 1
+    assert len(set(round(m, 1) for m in moyennes)) > 1, "icône toute grise : les 3 canaux sont égaux"
 
 
 def test_identite_visuelle():

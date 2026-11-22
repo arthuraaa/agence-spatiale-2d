@@ -62,6 +62,9 @@ class Historique:
             return None
         from . import sauvegarde
         nouveau = sauvegarde.dict_vers_univers(json.loads(zlib.decompress(photo[1]).decode("utf-8")))
+        # le rembobinage défait le vol, pas la carrière : ni missions refaites ni primes en double
+        nouveau.missions_faites |= u.missions_faites
+        nouveau.fonds = max(nouveau.fonds, u.fonds)
         self.photos = [p for p in self.photos if p[0] <= photo[0]]
         self.univers = nouveau
         return nouveau
@@ -87,6 +90,6 @@ def mettre_en_orbite(u, v):
     v.angle, v.omega, v.gaz = atan2(v.vy, v.vx), 0.0, 0.0
     v.mode = "rails"
     v.orbite = Orbite(v.x, v.y, v.vx, v.vy, c.mu, u.t)
-    v.troncons = []
+    u._predire(v)                                     # trajectoire prête (sinon : plus d'événements SOI/impact)
     v.cache_etat = (None, None)
     u.accel = 0

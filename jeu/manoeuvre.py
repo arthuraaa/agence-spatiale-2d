@@ -33,7 +33,6 @@ class Manoeuvre:
         self.rad = rad         # Δv radial (m/s), négatif = vers le corps
         self.restant = None    # (dvx, dvy) encore à donner, une fois la combustion commencée
         self.depart = None     # (dvx, dvy) au début de la combustion (détection du dépassement)
-        self.applique = 0.0    # Δv déjà donné (m/s)
         self.pilote_energie = False   # exécution automatique : c'est le pilote qui dira « fini »
 
     @property
@@ -57,7 +56,6 @@ class Manoeuvre:
     def consommer(self, dvx, dvy):
         """Retranche le Δv réellement donné. Renvoie True quand la manœuvre est finie."""
         self.restant = (self.restant[0] - dvx, self.restant[1] - dvy)
-        self.applique += hypot(dvx, dvy)
         depassement = self.restant[0] * self.depart[0] + self.restant[1] * self.depart[1] < 0.0
         return self.dv() < FIN_MANOEUVRE or depassement
 

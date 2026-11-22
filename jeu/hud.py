@@ -123,8 +123,8 @@ class Hud:
                                 allume=u.pilote is not None or self.menu_pilote))
                 self.ancre_pilote = (x + 150, y)
                 y -= 32
-            # SAS et modes
-            x0, y0 = l // 2 - 56, h - 124
+            # SAS et modes (le bloc fait 326 px de large : on le garde dans la fenêtre, même étroite)
+            x0, y0 = max(4, min(l // 2 - 56, l - 330)), h - 124
             for k, (mode, lib) in enumerate(LIBELLES_SAS):
                 def choisir(m=mode):
                     u.arreter_pilote()
@@ -239,7 +239,10 @@ class Hud:
         self.alerte = False
         titre, lignes = t("ATTERRISSAGE"), lignes_atterrissage(u, a)
         if not lignes and amarrage:
-            titre, lignes = t("AMARRAGE"), lignes_amarrage(u, a)
+            cle_amarrage = lignes_amarrage(u, a)
+            if cle_amarrage:
+                titre = t("AMARRAGE")                # lignes_amarrage renvoie des clés à traduire
+                lignes = [(t(nom), v, c) for nom, v, c in cle_amarrage]
         if not lignes:
             return
         self.alerte = any(v == t("MAINTENANT") for _, v, _ in lignes)      # bip d'alerte (écran de vol)
@@ -285,7 +288,6 @@ class Hud:
             pygame.draw.rect(surf, GRIS_FONCE, (52, yy + 17, 216, 8), 1)
             if maxi > 0:
                 pygame.draw.rect(surf, coul, (53, yy + 18, int(214 * val / maxi), 6))
-        etages = a_etages = None
         from .vaisseau import statistiques_etages
         etages = statistiques_etages(a.pieces)
         texte(surf, t("Δv étage {etage}   total {total} m/s", etage=fmt_nombre(etages[0]["dv"]) if etages else "0",
@@ -480,8 +482,6 @@ def lignes_atterrissage(u, v):
             txt = fmt_vitesse(val)
         elif nom == "Inclinaison":
             txt = "%.0f°" % val
-        elif nom == "Inclinaison":
-            txt = "%.0f°" % val
         elif nom == "Freinage dans" and val <= 1.0:
             txt = t("MAINTENANT")
         else:
@@ -491,7 +491,9 @@ def lignes_atterrissage(u, v):
 
 
 def lignes_amarrage(u, v):
-    """Aide au docking mise en forme : [(nom, texte, couleur)] ou None."""
+    """Aide au docking mise en forme : [(clé, texte, couleur)] ou None.
+    La clé est renvoyée brute (à traduire à l'affichage) : le HUD tactile filtre dessus,
+    et un filtre sur les textes traduits échouerait en anglais."""
     infos = mod_pilote.infos_amarrage(u, v)
     if not infos:
         return None
@@ -507,5 +509,5 @@ def lignes_amarrage(u, v):
             txt = "%+.1f m" % val
         else:
             txt = fmt_vitesse(val)
-        out.append((t(nom), txt, ROUGE if alerte else BLANC))
+        out.append((nom, txt, ROUGE if alerte else BLANC))
     return out

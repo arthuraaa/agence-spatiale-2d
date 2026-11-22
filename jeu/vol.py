@@ -301,7 +301,7 @@ class SceneVol:
         """Un doigt se pose : on retient ce qu'il attrape."""
         u, a = self.u, self.u.actif
         horloge = getattr(self.hud, "rect_temps", None)
-        if horloge is not None and horloge.collidepoint(d.pos):
+        if self.panneau is None and horloge is not None and horloge.collidepoint(d.pos):
             self.appui_horloge = (d.ident, time.monotonic())
         if self.panneau is not None or (u.perdu and a is None):
             for b in self.boutons:
@@ -446,6 +446,9 @@ class SceneVol:
         if k == pygame.K_F5:
             return self.sauvegarder()
         if k == pygame.K_F9:
+            if self.u.tutoriel:                      # même garde que la sauvegarde (F5)
+                self.u.dire(t("Pas de chargement pendant un tutoriel"), ORANGE, 3)
+                return
             return self.app.continuer()
         if k == pygame.K_COMMA:
             return u.changer_acceleration(-1)
@@ -476,6 +479,7 @@ class SceneVol:
         if pygame.KSCAN_1 <= sc <= pygame.KSCAN_1 + 7:
             mode = modes[sc - pygame.KSCAN_1]
             if mode != "manoeuvre" or a.noeud is not None:
+                u.arreter_pilote()                   # comme les boutons SAS à l'écran
                 a.sas = mode
         elif k == pygame.K_SPACE:
             u.separer_etage()
@@ -507,8 +511,8 @@ class SceneVol:
         if self.appui_horloge is not None:           # appui long sur l'horloge : menu secret
             ident, debut = self.appui_horloge
             d = self.doigts.actifs.get(ident)
-            if d is None or d.bouge:
-                self.appui_horloge = None
+            if self.panneau is not None or d is None or d.bouge:
+                self.appui_horloge = None            # un panneau s'est ouvert, ou le doigt a bougé
             elif time.monotonic() - debut >= triche.APPUI_LONG:
                 self.appui_horloge = None
                 self.panneau = "options"

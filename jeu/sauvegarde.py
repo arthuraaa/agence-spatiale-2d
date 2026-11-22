@@ -28,6 +28,8 @@ def vaisseau_vers_dict(u, v):
         "noeud": v.noeud.vers_dict() if v.noeud is not None else None,
         "pieces": [p.vers_dict() for p in v.pieces],
         "racine": next((i for i, p in enumerate(v.pieces) if p is v.racine), -1),
+        # séparation récente : l'index de l'autre vaisseau (le lien anti-recollage est refait au chargement)
+        "separe_de": next((i for i, w in enumerate(u.vaisseaux) if w.id == v.separe_de), None),
     }
 
 
@@ -75,6 +77,10 @@ def dict_vers_univers(d):
             if dv["mode"] == "rails":
                 sur_rails.append(v)
         u.vaisseaux.append(v)
+    for v, dv in zip(u.vaisseaux, d["vaisseaux"]):    # liens de séparation récente (ids refaits à neuf)
+        i = dv.get("separe_de")
+        if isinstance(i, int) and 0 <= i < len(u.vaisseaux) and u.vaisseaux[i] is not v:
+            v.separe_de = u.vaisseaux[i].id
     i = d.get("actif", -1)
     u.actif = u.vaisseaux[i] if 0 <= i < len(u.vaisseaux) else None
     for v in sur_rails:
@@ -101,7 +107,11 @@ def sauvegarder(u, chemin=None):
 def charger(chemin=None):
     chemin = chemin or chemin_sauvegarde()
     with open(chemin, "r", encoding="utf-8") as f:
-        return dict_vers_univers(json.load(f))
+        donnees = json.load(f)
+    try:
+        return dict_vers_univers(donnees)
+    except TypeError:                                 # sauvegarde fausse (types inattendus) :
+        raise ValueError("sauvegarde illisible")      # même refus propre qu'un JSON cassé
 
 
 def sauvegarde_existe():

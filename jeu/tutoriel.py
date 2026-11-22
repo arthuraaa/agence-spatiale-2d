@@ -423,6 +423,11 @@ class Tutoriel:
     def etape(self):
         return self.s.etapes[self.k]
 
+    @property
+    def pour_hangar(self):
+        """True pour le scénario du hangar : sa bulle doit y suivre le joueur."""
+        return self.s.ident == "hangar"
+
     def suivant(self):
         """Étape suivante ; après la dernière, le scénario est terminé."""
         if self.k + 1 >= len(self.s.etapes):
