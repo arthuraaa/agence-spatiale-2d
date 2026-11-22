@@ -109,8 +109,15 @@ def pieces_depuis_plan(plan, proprietaire=""):
 # --------------------------------------------------------------------------
 # Boosters
 # --------------------------------------------------------------------------
+def est_paire_boosters(p):
+    """Vrai pour une PAIRE de boosters (découpleur radial : ×2, miroir gauche/droite).
+    Sinon (port latéral + annexe amarrée) : un seul exemplaire, sur le côté droit."""
+    return bool(p.laterales) and p.laterales[0].m.cle == "decoupleur_radial"
+
+
 def masse_avec_boosters(p):
-    return p.masse() + 2.0 * sum(q.masse() for q in p.laterales)
+    n = 2.0 if est_paire_boosters(p) else 1.0
+    return p.masse() + n * sum(q.masse() for q in p.laterales)
 
 
 def moteur_et_reservoirs(pile):
@@ -120,9 +127,10 @@ def moteur_et_reservoirs(pile):
 
 
 def porteurs_actifs(pieces):
-    """Pièces de la section du bas qui portent des boosters : ceux-là brûlent maintenant."""
+    """Pièces de la section du bas qui portent des boosters : ceux-là brûlent maintenant.
+    (Une annexe amarrée sur un port latéral ne brûle jamais.)"""
     d = indice_decoupleur_bas(pieces)
-    return [p for p in pieces[(0 if d is None else d + 1):] if p.laterales]
+    return [p for p in pieces[(0 if d is None else d + 1):] if est_paire_boosters(p)]
 
 
 def _moteurs_de_section(pieces):
@@ -282,7 +290,8 @@ class Vaisseau:
         return sum(masse_avec_boosters(p) for p in self.pieces)
 
     def prix(self):
-        return sum(p.m.prix + 2 * sum(q.m.prix for q in p.laterales) for p in self.pieces)
+        return sum(p.m.prix + (2 if est_paire_boosters(p) else 1) * sum(q.m.prix for q in p.laterales)
+                   for p in self.pieces)
 
     def mono(self):
         return sum(p.mono for p in self.pieces)
@@ -337,12 +346,13 @@ class Vaisseau:
                 continue
             l_b = max(q.m.l for q in p.laterales)
             ecart = largeurs[k] / 2 + l_b / 2 + 0.15
+            n = 2.0 if est_paire_boosters(p) else 1.0                   # paire miroir ou annexe unique
             yb = hauts[k] + p.m.h - sum(q.m.h for q in p.laterales)     # haut du booster
             hauts_b = []
             for q in p.laterales:
                 hauts_b.append(yb)
-                moment += 2.0 * q.masse() * (yb + q.m.h / 2)
-                masse += 2.0 * q.masse()
+                moment += n * q.masse() * (yb + q.m.h / 2)
+                masse += n * q.masse()
                 yb += q.m.h
             dessus, dessous = min(dessus, hauts_b[0]), max(dessous, yb)
             boosters.append((k, p.laterales, ecart, hauts_b, largeurs[k] / 2))
@@ -362,14 +372,15 @@ class Vaisseau:
         largeur_max = max(largeurs) if largeurs else 1.0
         for k, pile, ecart, hauts_b, demi in boosters:
             segs = [(cdm - hb, cdm - hb - q.m.h) for hb, q in zip(hauts_b, pile)]
+            n = 2.0 if est_paire_boosters(pieces[k]) else 1.0
             for q, (yh, yb) in zip(pile, segs):
                 ym = 0.5 * (yh + yb)
-                inertie += 2.0 * q.masse() * (ym * ym + ecart * ecart + (q.m.h ** 2 + q.m.l ** 2) / 12.0)
+                inertie += n * q.masse() * (ym * ym + ecart * ecart + (q.m.h ** 2 + q.m.l ** 2) / 12.0)
             l_b = max(q.m.l for q in pile)
-            frontale += 2 * 3.14159 * (l_b / 2) ** 2
-            cote += 2 * l_b * sum(q.m.h for q in pile)
-            largeur_max = max(largeur_max, 2 * ecart + l_b)
-            g.laterales.append((k, pile, ecart, segs, demi))
+            frontale += n * 3.14159 * (l_b / 2) ** 2
+            cote += n * l_b * sum(q.m.h for q in pile)
+            largeur_max = max(largeur_max, (2 * ecart + l_b) if n == 2 else (ecart + l_b / 2))
+            g.laterales.append((k, pile, ecart, segs, demi, n))
         g.inertie = max(inertie, 1.0)
         g.largeur_max = largeur_max
         g.surface_frontale, g.surface_cote = frontale, cote
@@ -542,6 +553,22 @@ class Vaisseau:
         if extremite == "haut":
             return etat[0] + ca * g.nez, etat[1] + sa * g.nez, ca, sa
         return etat[0] + ca * g.fond, etat[1] + sa * g.fond, -ca, -sa
+
+    def ports_radiaux(self):
+        """Indices k des pièces portant un port latéral libre (rien d'amarré dessus)."""
+        return [k for k, p in enumerate(self.pieces)
+                if p.laterales and p.laterales[0].m.cle == "port_radial"
+                and len(p.laterales) == 1]
+
+    def point_port_radial(self, etat, k):
+        """Position (relative au corps) et direction sortante du port latéral de la pièce k.
+        Il est toujours sur le côté droit du vaisseau (perpendiculaire à l'axe)."""
+        g = self.geometrie()
+        ca, sa = cos(self.angle), sin(self.angle)
+        px, py = sa, -ca                              # perpendiculaire, vers la droite
+        yc = 0.5 * (g.segments[k][0] + g.segments[k][1])
+        r = g.largeurs[k] / 2 + 0.5                   # la surface du port dépasse du flanc
+        return etat[0] + ca * yc + px * r, etat[1] + sa * yc + py * r, px, py
 
     # ------------------------------------------------------------ utilitaires
     def proprietaire_majoritaire(self):

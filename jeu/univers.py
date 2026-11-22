@@ -349,16 +349,75 @@ class Univers:
         v = self.actif
         if v is None:
             return
-        js = v.jonctions()
-        if not js:
+        k = v.pieces.index(v.racine) if v.racine in v.pieces else 0
+        js = [(min(abs(i - k), abs(i - 1 - k)), "jonction", i) for i in v.jonctions()]
+        ks = [(min(abs(kk - k), abs(kk + 1 - k)), "annexe", kk)
+              for kk, p in enumerate(v.pieces)
+              if p.laterales and p.laterales[0].m.cle == "port_radial" and len(p.laterales) > 1]
+        if not js and not ks:
             self.dire(t("Aucun port amarré à séparer"), ORANGE, 3)
             return
-        k = v.pieces.index(v.racine) if v.racine in v.pieces else 0
-        j = min(js, key=lambda i: min(abs(i - k), abs(i - 1 - k)))
-        autre = self._scinder(v, j, 0.4)
+        _, genre, i = min(js + ks)
+        if genre == "jonction":
+            autre = self._scinder(v, i, 0.4)
+        else:
+            autre = self._separer_annexe(v, i)
         v.separe_de, autre.separe_de = autre.id, v.id
         self.dire(t("Désamarrage de {nom}", nom=autre.nom), JAUNE, 4)
         self.bruit("amarrage")
+
+    def _separer_annexe(self, v, k):
+        """Détache l'annexe amarrée sur le port latéral de la pièce k. Renvoie le nouveau vaisseau."""
+        g = v.geometrie()
+        pile = v.pieces[k].laterales
+        pieces = pile[1:]
+        m_a = sum(q.masse() for q in pieces)
+        y_a = 0.0
+        for kk, p2, ec, sg, _, _ in g.laterales:
+            if kk == k:
+                ecart, segs = ec, sg
+        for q, (yh, yb) in zip(pile[1:], segs[1:]):
+            y_a += q.masse() * 0.5 * (yh + yb)
+        y_annexe = y_a / m_a
+        # centre du vaisseau restant (toutes les pièces + les autres piles latérales)
+        morceaux = [(p.masse(), 0.5 * (s[0] + s[1])) for p, s in zip(v.pieces, g.segments)]
+        for kk, p2, _, sg, _, n in g.laterales:
+            if kk != k:
+                morceaux += [(n * q.masse(), 0.5 * (s[0] + s[1])) for q, s in zip(p2, sg)]
+        m_r = sum(m0 for m0, _ in morceaux)
+        y_reste = sum(m0 * yy for m0, yy in morceaux) / m_r
+        x, y, vx, vy = self.etat(v)
+        ca, sa = cos(v.angle), sin(v.angle)
+        px, py = sa, -ca                                   # côté droit, comme point_port_radial
+        mode_avant = v.mode
+        v.pieces[k].laterales = pile[:1]
+        impulsion = 0.4                                    # l'annexe part du flanc
+        total = m_a + m_r
+        dv_r = impulsion * m_a / total                     # et le vaisseau restant recule d'autant
+        etat_annexe = (x + ca * y_annexe + px * ecart, y + sa * y_annexe + py * ecart,
+                       vx + px * impulsion, vy + py * impulsion)
+        etat_reste = (x + ca * y_reste, y + sa * y_reste, vx - px * dv_r, vy - py * dv_r)
+        nouveau = Vaisseau("", pieces, v.corps)
+        nouveau.angle, nouveau.omega = v.angle, 0.0
+        nouveau.drapeaux = set(v.drapeaux)
+        nouveau.sas = "stab"
+        for vs, e in ((v, etat_reste), (nouveau, etat_annexe)):
+            vs.cache_etat = (None, None)
+            vs.orbite = None
+            vs.troncons = []
+            if mode_avant == "pose":
+                vs.mode, vs.longitude = "pose", v.longitude
+            else:
+                vs.x, vs.y, vs.vx, vs.vy = e
+                vs.mode = "physique"
+                vs.orbite = Orbite(e[0], e[1], e[2], e[3], v.corps.mu, self.t)
+            vs.normaliser()
+        if nouveau.racine is None:
+            nouveau.nom = self.nom_unique(t("Débris de {nom}", nom=v.nom))
+        else:
+            nouveau.nom = self.nom_unique(nouveau.proprietaire_majoritaire())
+        self.vaisseaux.append(nouveau)
+        return nouveau
 
     def ouvrir_parachute(self):
         v = self.actif
@@ -941,9 +1000,9 @@ class Univers:
         lx, ly = -sa, ca                                   # direction latérale
         porteurs = porteurs_actifs(v.pieces)
         largues = masse_larguee = moment = 0.0
-        for k, pile, ecart, segs, demi in g.laterales:
+        for k, pile, ecart, segs, demi, n in g.laterales:
             if v.pieces[k] not in porteurs:
-                continue
+                continue                              # une annexe sur port latéral ne se largue pas
             m = sum(q.masse() for q in pile)
             ym = sum(q.masse() * 0.5 * (a + b) for q, (a, b) in zip(pile, segs)) / m if m > 0 else 0.0
             for cote in (-1.0, 1.0):
@@ -982,12 +1041,12 @@ class Univers:
 
         def centre(a, b):
             # masse et centre de la tranche, boosters latéraux compris (comme geometrie()) ;
-            # une pile de g.laterales = DEUX boosters (miroir gauche/droite)
+            # une pile latérale compte n exemplaires (2 : paire miroir, 1 : annexe amarrée)
             morceaux = [(p.masse(), 0.5 * (s[0] + s[1]))
                         for p, s in zip(v.pieces[a:b], g.segments[a:b])]
-            for k, pile, _, segs, _ in g.laterales:
+            for k, pile, _, segs, _, n in g.laterales:
                 if a <= k < b:
-                    morceaux += [(2.0 * q.masse(), 0.5 * (s[0] + s[1])) for q, s in zip(pile, segs)]
+                    morceaux += [(n * q.masse(), 0.5 * (s[0] + s[1])) for q, s in zip(pile, segs)]
             m = sum(m0 for m0, _ in morceaux)
             ym = sum(m0 * y for m0, y in morceaux) / m
             return m, ym
@@ -1034,7 +1093,8 @@ class Univers:
         if a is None or a.mode == "pose" or self.accel > ACCEL_MAX_PHYSIQUE:
             return
         ports_a = a.ports_libres()
-        if not ports_a:
+        radiaux_a = a.ports_radiaux()
+        if not ports_a and not radiaux_a:
             return
         ea = self.etat(a)
         for b in self.vaisseaux:
@@ -1049,9 +1109,17 @@ class Univers:
                 for pb in b.ports_libres():
                     bx, by, bdx, bdy = b.point_port(eb, pb)
                     paires.append((hypot(ax - bx, ay - by), adx * bdx + ady * bdy, pa, pb))
+                for k in b.ports_radiaux():       # notre extrémité sur le port latéral de l'autre
+                    bx, by, bdx, bdy = b.point_port_radial(eb, k)
+                    paires.append((hypot(ax - bx, ay - by), adx * bdx + ady * bdy, pa, ("lat", k)))
+            for k in radiaux_a:                   # ou notre port latéral qui reçoit l'autre
+                ax, ay, adx, ady = a.point_port_radial(ea, k)
+                for pb in b.ports_libres():
+                    bx, by, bdx, bdy = b.point_port(eb, pb)
+                    paires.append((hypot(ax - bx, ay - by), adx * bdx + ady * bdy, ("lat", k), pb))
             if not paires:
                 continue
-            d, alignement, pa, pb = min(paires)
+            d, alignement, pa, pb = min(paires, key=lambda p: (p[0], p[1]))
             if a.separe_de == b.id:                     # on vient de se séparer : attendre
                 if d > 3.0:
                     a.separe_de = b.separe_de = None
@@ -1062,27 +1130,40 @@ class Univers:
                 return
 
     def _amarrer(self, a, b, pa, pb, ea, eb):
-        """Fusionne b dans a (la pile reste dans le repère du vaisseau actif)."""
+        """Fusionne b dans a (la pile reste dans le repère du vaisseau actif).
+        Un port « ("lat", k) » désigne le port latéral de la pièce k : l'autre vaisseau
+        devient une annexe accrochée sur le flanc, qui se détache avec U."""
         ma, mb = a.masse(), b.masse()
         m = ma + mb
-        if pa == "haut":
-            autres = b.pieces if pb == "bas" else inverser(b.pieces)
-            a.pieces = autres + a.pieces
+        if isinstance(pa, tuple):                 # le port latéral de a reçoit b
+            recepteur, annexe, extremite, k = a, b, pb, pa[1]
+        elif isinstance(pb, tuple):               # le port latéral de b reçoit a
+            recepteur, annexe, extremite, k = b, a, pa, pb[1]
+        elif pa == "haut":
+            recepteur, annexe, extremite, k = a, b, pb, None
+            a.pieces = (b.pieces if pb == "bas" else inverser(b.pieces)) + a.pieces
         else:
-            autres = b.pieces if pb == "haut" else inverser(b.pieces)
-            a.pieces = a.pieces + autres
-        etat = tuple((ma * ea[k] + mb * eb[k]) / m for k in range(4))
-        a.omega = 0.0
-        a.drapeaux |= b.drapeaux
-        a.drapeaux.add("amarre:" + b.nom)
+            recepteur, annexe, extremite, k = a, b, pb, None
+            a.pieces = a.pieces + (b.pieces if pb == "haut" else inverser(b.pieces))
+        if k is not None:                         # l'annexe part du flanc vers l'extérieur :
+            port = recepteur.pieces[k].laterales[0]   # la pièce amarrée est collée au port
+            recepteur.pieces[k].laterales = [port] + \
+                (inverser(annexe.pieces) if extremite == "bas" else annexe.pieces)
+        etat = tuple((ma * ea[i] + mb * eb[i]) / m for i in range(4))
+        recepteur.omega = 0.0
+        recepteur.drapeaux |= annexe.drapeaux
+        recepteur.drapeaux.add("amarre:" + annexe.nom)
         self.stat("amarrages")
-        if b.contient_proprietaire(NOM_STATION):
-            a.drapeaux.add("amarre:" + NOM_STATION)
-        nom_b = b.nom
-        self._retirer(b)
-        b.detruit = True
-        self._vers_physique(a, etat)
-        a.gaz = 0.0
+        if annexe.contient_proprietaire(NOM_STATION):
+            recepteur.drapeaux.add("amarre:" + NOM_STATION)
+        nom_b = annexe.nom
+        etait_actif = self.actif is annexe
+        self._retirer(annexe)
+        annexe.detruit = True
+        if etait_actif:
+            self.actif = recepteur                # on garde le contrôle du vaisseau qui reste
+        self._vers_physique(recepteur, etat)
+        recepteur.gaz = 0.0
         self.dire(t("Amarrage réussi avec {nom} !", nom=nom_b), VERT, 6)
         self.bruit("amarrage")
 

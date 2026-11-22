@@ -434,16 +434,17 @@ def dessiner_pile(surf, v, g, origine, axe, perp, flamme=0.0, vide=1.0, selectio
 
 
 def _dessiner_boosters(surf, v, g, P, flamme, vide, selection, nuit):
-    """Paires de boosters latéraux : la même pile dessinée à gauche et à droite du cœur."""
+    """Piles latérales : les boosters à gauche ET à droite du cœur, une annexe amarrée
+    (port latéral) seulement à droite."""
     from .vaisseau import porteurs_actifs, moteur_et_reservoirs, indice_moteur
     actifs = porteurs_actifs(v.pieces) if flamme > 0.0 else []
-    for k, pile, ecart, segs, demi in getattr(g, "laterales", []):
+    for k, pile, ecart, segs, demi, n in getattr(g, "laterales", []):
         i_moteur = None
         if v.pieces[k] in actifs and sum(r.carburant for r in moteur_et_reservoirs(pile)[1]) > 0:
             i_moteur = indice_moteur(pile)
         haut_b, bas_b = segs[0][0], segs[-1][1]
         l_b = max(q.m.l for q in pile)
-        for cote in (-1.0, 1.0):
+        for cote in ((-1.0, 1.0) if n == 2 else (1.0,)):
             # deux attaches (le découpleur radial) entre la pile centrale et le booster
             for ya in (haut_b - 0.9, bas_b + 1.2):
                 x0, x1 = cote * demi, cote * (ecart - l_b / 2)

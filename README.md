@@ -186,6 +186,11 @@ confidentialité).
   sélectionné. Le bas des boosters est aligné sur le bas de leur pièce porteuse.
   Les boosters accrochés à l'étage du bas s'allument avec le moteur central, chacun avec son
   propre carburant, et `ESPACE` les largue en premier. Le modèle **Hercule** en montre un exemple.
+- **Port latéral** : sélectionne une pièce, puis ajoute un *Port latéral* : un port
+  d'amarrage sur le flanc droit, qui reçoit un vaisseau perpendiculairement. Ensuite,
+  tout ce que tu ajoutes va dans l'**annexe** accrochée à ce port (modules, réservoirs...) :
+  de quoi construire une station ramifiée. En vol, amarrer un vaisseau sur ce port le
+  fusionne dans la station (il ne se pilote plus tout seul), et `U` le détache.
 
 ## Commandes (clavier AZERTY)
 

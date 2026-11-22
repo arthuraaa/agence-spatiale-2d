@@ -8,7 +8,7 @@ from .missions import MISSIONS
 from .constantes import BLANC, GRIS, GRIS_FONCE, CYAN, ORANGE, VERT, ROUGE, JAUNE, NOIR
 from .pieces import CATALOGUE, CATEGORIES, MODELES, Piece
 from .vaisseau import (Vaisseau, orienter_ports, statistiques_etages, indice_moteur, pieces_depuis_plan,
-                       toutes_les_cles, prix_plan, copie_plan, moteur_et_reservoirs)
+                       toutes_les_cles, prix_plan, copie_plan, moteur_et_reservoirs, est_paire_boosters)
 from .rendu import dessiner_pile, formes_piece
 from .interface import (texte, texte_multiligne, panneau, Bouton, fmt_nombre, fmt_masse,
                         fmt_duree, police)
@@ -113,11 +113,24 @@ class SceneHangar:
             self.selection = (sel, 0)
             self.message = t("Boosters accrochés : ajoute-leur un réservoir, puis un moteur.")
             return
-        if isinstance(sel, tuple):                       # on remplit le booster sélectionné
-            if CATALOGUE[cle].forme not in ("reservoir", "moteur", "coiffe"):
+        if cle == "port_radial":                         # accroche un port latéral
+            if not isinstance(sel, int):
+                self.message = t("Choisis d'abord la pièce qui portera le port latéral.")
+                return
+            if self._booster(sel) is not None:
+                self.message = t("Cette pièce porte déjà quelque chose sur le côté.")
+                return
+            self.cles[sel] = [self.cles[sel], ["port_radial"]]
+            self.selection = (sel, 0)
+            self.message = t("Port latéral accroché : en vol, amarre-toi dessus avec un port d'extrémité.")
+            return
+        if isinstance(sel, tuple):                       # on remplit la pile latérale sélectionnée
+            i, j = sel
+            pile = self._booster(i)
+            annexe = bool(pile) and pile[0] == "port_radial"     # annexe : toutes les pièces
+            if not annexe and CATALOGUE[cle].forme not in ("reservoir", "moteur", "coiffe"):
                 self.message = t("Un booster ne prend que des réservoirs, des moteurs et une coiffe.")
                 return
-            i, j = sel
             self._booster(i).insert(j + 1, cle)
             self.selection = (i, j + 1)
             self.message = ""
@@ -212,7 +225,7 @@ class SceneHangar:
             out.append((t("Il faut une pièce de commande (capsule, sonde...)"), True))
         if any(not self.u.piece_debloquee(c) for c in toutes_les_cles(self.cles)):
             out.append((t("Contient des pièces pas encore débloquées"), True))
-        if any(p.laterales and moteur_et_reservoirs(p.laterales)[0] is None for p in pieces):
+        if any(est_paire_boosters(p) and moteur_et_reservoirs(p.laterales)[0] is None for p in pieces):
             out.append((t("Un booster n'a pas de moteur tout en bas"), False))
         prix = prix_plan(self.cles)
         if not self.u.bac_a_sable and prix > self.u.fonds:
@@ -433,10 +446,10 @@ class SceneHangar:
         dessiner_pile(surf, v, g, (cx, oy), (0.0, -ech), (ech, 0.0), selection=sel)
         # zones cliquables : les boosters d'abord (ils sont prioritaires là où ils se trouvent)
         etages = statistiques_etages(pieces)
-        for k, pile, ecart, segs, demi in g.laterales:
+        for k, pile, ecart, segs, demi, n in g.laterales:
             l_b = max(q.m.l for q in pile)
             for j, (q, (yh, yb)) in enumerate(zip(pile, segs)):
-                for cote in (-1, 1):
+                for cote in ((-1, 1) if n == 2 else (1,)):
                     if q.m.forme == "radial":                  # l'attache du haut, entre cœur et booster
                         x0 = cx + cote * demi * ech
                         x1 = cx + cote * (ecart - l_b / 2) * ech
@@ -446,7 +459,8 @@ class SceneHangar:
                         rect = pygame.Rect(cx + cote * ecart * ech - w / 2, oy - yh * ech, w, max(6, (yh - yb) * ech))
                     self.zones_pile.append((rect, (k, j)))
             phase = next((n for n, e in enumerate(etages) if e.get("boosters")), None)
-            if phase is not None and pieces[k] is next((p for p in pieces[::-1] if p.laterales), None):
+            if phase is not None and est_paire_boosters(pieces[k]) and \
+                    pieces[k] is next((p for p in pieces[::-1] if est_paire_boosters(p)), None):
                 e = etages[phase]
                 xg = cx - (ecart + l_b / 2) * ech - 8
                 etiq = t("boosters · Δv {dv}", dv=fmt_nombre(e["dv"]))

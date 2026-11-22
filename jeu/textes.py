@@ -472,6 +472,16 @@ TOUT = {
     "Boosters accrochés : ajoute-leur un réservoir, puis un moteur.": {
         "fr": "Boosters accrochés : ajoute-leur un réservoir, puis un moteur.",
         "en": "Boosters attached: add a tank, then an engine."},
+    "Port latéral": {"fr": "Port latéral", "en": "Side docking port"},
+    "Choisis d'abord la pièce qui portera le port latéral.": {
+        "fr": "Choisis d'abord la pièce qui portera le port latéral.",
+        "en": "First pick the part that will carry the side docking port."},
+    "Cette pièce porte déjà quelque chose sur le côté.": {
+        "fr": "Cette pièce porte déjà quelque chose sur le côté.",
+        "en": "This part already carries something on its side."},
+    "Port latéral accroché : en vol, amarre-toi dessus avec un port d'extrémité.": {
+        "fr": "Port latéral accroché : en vol, amarre-toi dessus avec un port d'extrémité.",
+        "en": "Side port attached: in flight, dock onto it with an end port."},
     "Un booster ne prend que des réservoirs, des moteurs et une coiffe.": {
         "fr": "Un booster ne prend que des réservoirs, des moteurs et une coiffe.",
         "en": "A booster only takes tanks, engines and a fairing."},
