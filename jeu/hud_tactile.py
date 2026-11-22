@@ -53,6 +53,7 @@ class HudTactile(Hud):
         self.cadran = None                    # (cx, cy) ou None s'il n'y a pas la place
         self.noeud_visible = False
         self.y_haut_sas = 0
+        self.rect_croix = None                # zone de la croix RCS (elle a priorité sur les panneaux)
 
     # ------------------------------------------------------------ doigts
     def zone(self, pos):
@@ -73,21 +74,34 @@ class HudTactile(Hud):
     def _construire_boutons(self, u, l, h):
         sc, a = self.scene, u.actif
         b, maintenus = [], []
-        # en haut au centre : accélération du temps (la case du milieu remet le temps à x1)
-        b.append(Bouton((l // 2 - 124, M, 52, 44), "◀", lambda: u.changer_acceleration(-1), 20))
-        b.append(Bouton((l // 2 + 72, M, 52, 44), "▶", lambda: u.changer_acceleration(+1), 20))
-        self.rect_temps = pygame.Rect(l // 2 - 66, M, 132, 44)
-        b.append(Bouton(self.rect_temps, "", sc.temps_normal))
         # en haut à droite : menu, et « revenir au vaisseau » quand la vue est ailleurs
         b.append(Bouton((l - MX - 56, M, 56, 44), "☰", lambda: sc.ouvrir("pause"), 24))
+        hors = sc.cam.hors_vaisseau(u)
         x_pilote = l - MX - 62
-        if sc.cam.hors_vaisseau(u):                     # revenir (et rezoomer) sur la fusée
+        if hors:                                        # revenir (et rezoomer) sur la fusée
             b.append(Bouton((l - MX - 118, M, 56, 44), "◎", sc.recentrer, 24))
             x_pilote -= 62
         if reglages.AIDES and a is not None:                 # pilote automatique
             b.append(Bouton((x_pilote - 96, M, 96, 44), t("Pilote"), self.basculer_menu_pilote, 16,
                             allume=u.pilote is not None or self.menu_pilote))
             self.ancre_pilote = (x_pilote, M)
+        # en haut au centre : accélération du temps (la case du milieu remet le temps à x1) ;
+        # sur écran étroit, décalée à droite pour ne pas couvrir le panneau de vol, et
+        # compacte (44/92/44) si « ◎ » et « Pilote » lui laissent moins de la place
+        gauche_panneau = MX + L_PANNEAU + 4
+        droite_boutons = (x_pilote - 96) if (reglages.AIDES and a is not None) else \
+            (l - MX - 118 if hors else l - MX - 56)
+        if l // 2 + 124 <= droite_boutons - 4:
+            xc = max(l // 2, gauche_panneau + 124)
+            b.append(Bouton((xc - 124, M, 52, 44), "◀", lambda: u.changer_acceleration(-1), 20))
+            b.append(Bouton((xc + 72, M, 52, 44), "▶", lambda: u.changer_acceleration(+1), 20))
+            self.rect_temps = pygame.Rect(xc - 66, M, 132, 44)
+        else:
+            xc = gauche_panneau + 92
+            b.append(Bouton((xc - 92, M, 44, 44), "◀", lambda: u.changer_acceleration(-1), 20))
+            b.append(Bouton((xc + 48, M, 44, 44), "▶", lambda: u.changer_acceleration(+1), 20))
+            self.rect_temps = pygame.Rect(xc - 46, M, 92, 44)
+        b.append(Bouton(self.rect_temps, "", sc.temps_normal))
         self.cadran = None
         if a is None:
             self.boutons, self.maintenus = b, maintenus
@@ -138,8 +152,10 @@ class HudTactile(Hud):
         if larg >= 2 * R_CADRAN + 20:
             self.cadran = (xs + larg // 2, self.y_haut_sas - R_CADRAN - 14)
         # ---- croix de translation RCS (seulement quand le RCS est allumé)
+        self.rect_croix = None
         if a.rcs:
             cx, cy = x0 - 110, h - 230
+            self.rect_croix = pygame.Rect(cx - 95, cy - 95, 190, 190)
             for commande, i, j, symbole in CROIX_RCS:
                 maintenus.append((pygame.Rect(cx + i * 62 - 29, cy + j * 62 - 29, 58, 58), commande, symbole))
         # ---- boutons du panneau de manœuvre (sur écran étroit, la croix RCS a la priorité)
@@ -192,7 +208,10 @@ class HudTactile(Hud):
             if self.noeud_visible:
                 self._noeud_tactile(surf, u, a, l)
             elif reglages.AIDES:
-                self._atterrissage(surf, u, a, (MX + L_GAZ + 12, M + H_INFOS + 12, L_PANNEAU), amarrage=False)
+                x_at, larg_at = MX + L_GAZ + 12, L_PANNEAU
+                if self.rect_croix is not None:            # sur écran étroit, la croix RCS gagne
+                    larg_at = min(larg_at, self.rect_croix.left - x_at - 8)
+                self._atterrissage(surf, u, a, (x_at, M + H_INFOS + 12, larg_at), amarrage=False)
             if self.cadran is not None:
                 self._cadran(surf, u, cam, a, self.cadran[0], self.cadran[1], R=R_CADRAN, legende=False)
         m = None if u.tutoriel else mission_suggeree(u)       # pas d'objectif pendant un tutoriel
@@ -202,11 +221,17 @@ class HudTactile(Hud):
                        largeur=max(300, l - 2 * (MX + L_PANNEAU + 16)))
         lignes = lignes_cible(u, a)[:8]
         amarrage = lignes_amarrage(u, a) if reglages.AIDES and lignes else None
+        # sur écran étroit avec le RCS allumé : le panneau s'arrête au-dessus de la croix
+        n_max = 8
+        if self.rect_croix is not None and self.rect_croix.right > l - MX - L_PANNEAU:
+            n_max = max(4, (self.rect_croix.top - M - 64 - 12) // 19)
         if amarrage:            # docking : dans le panneau de la cible (la croix RCS occupe la gauche)
             # filtre sur les CLÉS (lignes_amarrage ne traduit pas) : marche dans les deux langues
-            lignes = lignes[:6] + [(t("Au port") if cle == "Distance au port" else t(cle), v, c)
-                                   for cle, v, c in amarrage
-                                   if cle in ("Distance au port", "Écart latéral", "Alignement")]
+            garder = max(3, n_max - 3)             # la place reste aux lignes d'amarrage
+            lignes = lignes[:garder] + [(t("Au port") if cle == "Distance au port" else t(cle), v, c)
+                                        for cle, v, c in amarrage
+                                        if cle in ("Distance au port", "Écart latéral", "Alignement")]
+        lignes = lignes[:n_max]
         if lignes:
             x = l - MX - L_PANNEAU
             panneau(surf, (x, M + 52, L_PANNEAU, 12 + 19 * len(lignes)))

@@ -334,6 +334,71 @@ def test_verifier_paquet_tri_versions():
         cle_version_buildtools("/sdk/build-tools/9.0.0/aapt2")
 
 
+def test_apollo13_transfert_sms():
+    """Apollo 13 : le module de service vidé peut être rempli depuis Aquarius (panneau Transfert)."""
+    from jeu.vaisseau import nom_section
+    import main as jeu_main2
+    app13 = jeu_main2.Application(tactile=False)
+    from jeu import tutoriel as tut
+    tut.demarrer(app13, "apollo13")
+    u13 = app13.univers
+    a = u13.actif
+    sections = a.sections_reservoirs()
+    # la section du module de service d'Odyssey est vidée par le scénario mais listée
+    i_sms = next(i for i, s in enumerate(sections)
+                 if any(p.proprietaire == "Odyssey" for p in s) and any(p.m.carburant > 0 for p in s))
+    assert sum(p.carburant for p in sections[i_sms]) == 0.0, "l'explosion n'a pas vidé le module de service"
+    carb, mono = a.remplir(i_sms)
+    assert carb > 1000.0, "« Remplir » n'a pas puisé dans les réservoirs d'Aquarius (%.0f kg)" % carb
+    assert sum(p.carburant for p in sections[i_sms]) > 1000.0, "le module de service est resté vide"
+    assert nom_section(sections[i_sms]).startswith("Odyssey"), "la section trouvée n'est pas celle d'Odyssey"
+
+
+def test_drapeaux_fusionnes_amarrage():
+    """L'amarrage fusionne les drapeaux : un seul vaisseau peut porter tout le Grand Tour."""
+    u = univers_()
+    v = u.actif
+    sur_orbite(u, v)
+    autre = u.lancer("Compagnon", ["capsule", "reservoir_m", "alize"])
+    autre.x, autre.y = v.x + 5.0, v.y
+    autre.vx = autre.vy = 0.0
+    autre.mode = "physique"
+    autre.cache_etat = (None, None)
+    autre.drapeaux |= {"soi:Jupiter", "orbite:Mars"}
+    u.cible = autre
+    u._amarrer(v, autre, "haut", "haut", u.etat(v), u.etat(autre))
+    assert "soi:Jupiter" in v.drapeaux and "orbite:Mars" in v.drapeaux, \
+        "les drapeaux de l'amarré n'ont pas été fusionnés"
+    from jeu.missions import _grand_tour
+    v.drapeaux |= {"soi:Saturne", "soi:Uranus", "soi:Neptune"}
+    assert _grand_tour(u, v), "le Grand Tour ne reconnaît pas les drapeaux fusionnés"
+    # la séparation garde les drapeaux sur les deux moitiés (pas de perte)
+    morceau = u._scinder(v, 1, 0.4)
+    assert "soi:Jupiter" in morceau.drapeaux, "les drapeaux sont perdus à la séparation"
+
+
+def test_barre_temps_43():
+    """En 4:3 (720 px), la barre du temps ne couvre pas le panneau de vol."""
+    class Cam:
+        mode = "auto"
+        def hors_vaisseau(self, u):
+            return False
+
+    class Scene:
+        cam = Cam()
+        def ouvrir(self, quoi):
+            pass
+        basculer_rcs = changer_reference = changer_camera = recuperer = recentrer = temps_normal = ouvrir
+
+    u = univers_()
+    scene = Scene()
+    from jeu.hud_tactile import HudTactile
+    h = HudTactile(scene)
+    h._construire_boutons(u, 720, 540)
+    assert h.rect_temps.left >= 30 + 250, \
+        "la barre du temps commence à %d, dans le panneau de vol" % h.rect_temps.left
+
+
 def test_pas_de_cles_dupliquees():
     """Le dictionnaire de textes n'a plus de clé écrite deux fois (la deuxième écrasait la première)."""
     import ast
