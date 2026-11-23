@@ -2,7 +2,8 @@
 """
 Scénarios : des missions historiques à rejouer.
 
-    Spoutnik 1 (1957), Vostok 1 (1961), Apollo 11 (1969), Apollo 13 (1970).
+    Spoutnik 1 (1957), Vostok 1 (1961), Apollo 11 (1969), Apollo 13 (1970),
+    Luna 2 (1959), Apollo-Soyouz (1975), Voyager 2 (1977), Cassini-Huygens (1997).
 
 Même moteur que les tutoriels (tutoriel.py) : une situation de départ, des objectifs validés
 tout seuls, une bulle qui explique, « Réessayer » après un crash, et une partie à part qui ne
@@ -16,11 +17,15 @@ from math import atan2, cos, sin, sqrt, pi
 
 from .orbite import Orbite
 from .vaisseau import construire
+from .corps import Corps
 from .tutoriel import Scenario, Etape, PAR_ID, placer_en_orbite, _vue_orbite
 
 CSM = ["port", "capsule", "decoupleur", "reservoir_m", "alize"]          # vaisseau de commande et de service
 LEM = ["port", "capsule", "reservoir_s", "moustique",                     # module lunaire : étage de remontée...
        "decoupleur", "reservoir_m", "train", "moustique"]                 # ... et étage de descente
+SOYOUZ = ["port", "capsule", "decoupleur", "reservoir_m", "alize", "port"]  # le Soyouz (ASTP) :
+# un port aux deux bouts, comme la station, pour que l'aide d'amarrage accroche le port
+# le plus proche quel que soit le côté d'où arrive Apollo.
 
 
 # --------------------------------------------------------------------------- outils
@@ -131,6 +136,38 @@ def _depart_apollo13(app, u):
 
 
 # --------------------------------------------------------------------------- les missions
+def _depart_apollo_soyouz(app, u):
+    """Deux vaisseaux amis en orbite terrestre basse, à 3 km l'un de l'autre : plus qu'à se rejoindre."""
+    terre = u.terre
+    apollo = construire("Apollo", CSM, terre)
+    placer_en_orbite(u, apollo, terre, 12000, 1.0)
+    soyouz = construire("Soyouz", SOYOUZ, terre)
+    placer_en_orbite(u, soyouz, terre, 12000, 1.04)
+    for v in (apollo, soyouz):                         # monergol généreux : la capsule n'emporte
+        for piece in v.pieces:                         # que 120 kg et le SAS de croisière en mange
+            if piece.m.mono > 0.0:
+                piece.mono = 500.0
+    u.actif = apollo
+    app.aller_vol()
+    _vue_orbite(app, terre.R + 12000)
+
+
+def _impact_sur(corps_nom):
+    """Une explosion vient-elle de se produire sur ce corps ? (l'effet dure 1,6 s, largement vu)"""
+    def fini(t, sc):
+        corps = sc.u.par_nom.get(corps_nom)
+        return corps is not None and any(e["corps"] is corps for e in sc.u.effets)
+    return fini
+
+
+def _cible_est(nom):
+    """La cible du joueur est bien le vaisseau (ou corps) de `nom`."""
+    def fini(t, sc):
+        return (sc.u.cible is not None and not isinstance(sc.u.cible, Corps)
+                and sc.u.cible is vaisseau_de(sc.u, nom))
+    return fini
+
+
 def _ok_capsule_seule(u, nom):
     """Le vaisseau actif est la capsule de `nom`, débarrassée de tout moteur (prête à rentrer)."""
     v = u.actif
@@ -241,6 +278,47 @@ MISSIONS = [
               "« l'échec réussi »."),
     ], conseil="largue Aquarius et le module de service avant l'atmosphère, puis ouvre le parachute "
                "sous 250 m/s.", genre="mission", annee=1970),
+
+    Scenario("luna2", "Luna 2", "Le premier objet sur la Lune",
+             _depart_pas_de_tir("Luna 2", ["sonde", "reservoir_m", "alize", "decoupleur",
+                                           "reservoir_xl", "reservoir_xl", "titan"]), [
+        Etape("14 septembre 1959. Luna 2 frappe le sol de la Lune : c'est le premier objet fabriqué "
+              "par l'homme à toucher un autre monde. Pas d'atterrissage en douceur ici : il faut "
+              "arriver en force, et le drapeau soviétique qu'elle porte éclatera avec elle."),
+        Etape("Décolle et mets Luna 2 en orbite : périapside au-dessus de 8 km. "
+              "[[Besoin d'aide ? {PILOTE}, puis « Mise en orbite ».|]]",
+              lambda t, sc: _pe(sc.u) > 8000 and sc.u.actif.gaz == 0.0),
+        Etape("Cible la Lune (dézoome, puis {TAPER} dessus), planifie le transfert et exécute-le. "
+              "[[Dézoome, {TAPER} sur la Lune, puis {PILOTE} : « Transfert vers la Lune », et "
+              "« Exécuter la manœuvre ».|Dézoome, tape sur la Lune pour la cibler, pose un nœud qui "
+              "allonge ton orbite jusqu'à elle, puis exécute-le.]]",
+              lambda t, sc: sc.u.actif is not None and "soi:Lune" in sc.u.actif.drapeaux),
+        Etape("La Lune arrive à ta rencontre. Ne freine pas : fonce ! Luna 2 doit frapper le sol "
+              "lunaire, son paquet de bannières à la main.",
+              _impact_sur("Lune")),
+        Etape("Luna 2 a frappé la Lune entre les cratères Archimède et Autolycus, ses bannières "
+              "éparpillées sur le sol. Un an plus tard, Luna 3 enverra les premières photos de la "
+              "face cachée de la Lune."),
+    ], conseil="mise en orbite, puis cible la Lune et laisse le pilote planifier le transfert ; "
+               "ne freine jamais en approche.", genre="mission", annee=1959, crash_prevu=True),
+
+    Scenario("apollo_soyouz", "Apollo-Soyouz", "La première poignée de main dans l'espace",
+             _depart_apollo_soyouz, [
+        Etape("Juillet 1975. En pleine guerre froide, un Apollo américain et un Soyouz soviétique "
+              "s'amarrent en orbite : la première mission conjointe de deux puissances rivales. "
+              "Les deux équipages avaient appris la langue de l'autre... Toi, apprends l'amarrage !"),
+        Etape("Apollo est aux commandes. Cible Soyouz : {TAPER} dessus, puis « Cibler ».",
+              _cible_est("Soyouz")),
+        Etape("Rejoins Soyouz et amarre-toi. [[{PILOTE}, puis « Rendez-vous et amarrage » (il faut "
+              "être à moins de 5 km)|Approche-toi d'abord avec un nœud de manœuvre, puis finis au "
+              "RCS en visant la cible.]]",
+              lambda t, sc: vaisseau_de(sc.u, "Apollo") is not None
+              and vaisseau_de(sc.u, "Apollo") is vaisseau_de(sc.u, "Soyouz")),
+        Etape("« Apollo et Soyouz sont amarrés ! » Les commandants Leonov et Stafford échangent "
+              "une poignée de main à travers le tunnel. C'est le dernier vol d'Apollo jusqu'à la "
+              "future station internationale."),
+    ], conseil="cible Soyouz d'abord : le pilote sait faire le rendez-vous et l'amarrage tout "
+               "seul (option « Aides »).", genre="mission", annee=1975),
 ]
 
 for _m in MISSIONS:

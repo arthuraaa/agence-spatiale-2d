@@ -152,8 +152,48 @@ def apollo11():
 
 
 
+def luna2():
+    """Luna 2 : l'impact EST la mission (crash_prevu). Mise en orbite, transfert, fonce."""
+    app = nouvelle("luna2")
+    tourner(app, lambda a: etape(a) == 1)
+    pilote_auto(app, pilote.MiseEnOrbite())
+    tourner(app, lambda a: etape(a) == 2)
+    u = app.univers
+    lune = u.par_nom["Lune"]
+    u.cibler(lune)
+    assert pilote.planifier_transfert(u, u.actif, lune), [m[0] for m in u.messages[-2:]]
+    pilote_auto(app, pilote.ExecuterNoeud())
+    journal = lambda txt: print("   t=%6.0f s  étape %s  %s" % (u.t, etape(app), txt))
+    def approcher(a):
+        u = a.univers; v = u.actif
+        if v is None: return
+        if v.corps is u.par_nom["Lune"]:
+            u.accel = 4                     # Luna 2 ne freine pas, elle vise le sol :
+            v.sas = "retro"                 # frein rétrograde jusqu'à une trajectoire d'impact
+            v.gaz = 1.0 if scenarios._pe(u) > -5000 \
+                and abs(v.angle - (u.angle_sas(v) or v.angle)) < 0.2 else 0.0
+        else:
+            u.accel = MAX
+    tourner(app, lambda a: etape(a) == 3, approcher); journal("entrée dans la SOI lunaire")
+    tourner(app, lambda a: a.tuto.termine, approcher, limite=4 * 60 * 60 * 60)
+    return app
+
+
+def apollo_soyouz():
+    """Apollo-Soyouz : rendez-vous et amarrage entre deux vaisseaux amis."""
+    app = nouvelle("apollo_soyouz")
+    tourner(app, lambda a: etape(a) == 1)
+    u = app.univers
+    soyouz = scenarios.vaisseau_de(u, "Soyouz")
+    u.cibler(soyouz)
+    tourner(app, lambda a: etape(a) == 2)
+    pilote_auto(app, pilote.RendezVous(soyouz))
+    tourner(app, lambda a: a.tuto.termine)
+    return app
+
+
 def test_missions_jouees_jusquau_bout():
-    for nom in ("spoutnik", "vostok", "apollo13", "apollo11"):
+    for nom in ("spoutnik", "vostok", "apollo13", "apollo11", "luna2", "apollo_soyouz"):
         t0 = time.time()
         app = globals()[nom]()
         assert app.tuto.termine and nom in reglages.TUTOS_FAITS
@@ -170,7 +210,8 @@ def test_interface():
     sc.dessiner(app.ecran)
     pygame.image.save(app.ecran, "/tmp/scenarios_liste.png")
     assert len(sc.boutons) == len(scenarios.MISSIONS) + 1              # les missions, et « Retour »
-    sc.boutons[2].action()                                             # Apollo 11
+    i = [s.ident for s in scenarios.MISSIONS].index("apollo11")        # boutons sans libellé :
+    sc.boutons[i].action()                                             # repéré dans l'ordre de la liste
     assert app.tuto.s.ident == "apollo11"
     for _ in range(3):
         app.scene.maj(1 / 60)

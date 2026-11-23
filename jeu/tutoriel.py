@@ -120,13 +120,17 @@ class Etape:
 
 
 class Scenario:
-    def __init__(self, ident, titre, resume, depart, etapes, conseil="", genre="tuto", annee=None):
+    def __init__(self, ident, titre, resume, depart, etapes, conseil="", genre="tuto", annee=None,
+                 crash_prevu=False):
         self.ident, self.titre, self.resume = ident, titre, resume
         self.genre = genre            # "tuto" (tutoriels) ou "mission" (scénarios historiques)
         self.annee = annee
         self.conseil = conseil        # le petit conseil donné après un crash
         self.depart = depart          # fonction(app, univers) : pose le décor et ouvre la bonne scène
         self.etapes = etapes
+        # True pour les missions dont l'impact EST le but (Luna 2) : un crash ne propose
+        # pas « Réessayer » tout de suite, l'étape en cours juge d'abord l'explosion.
+        self.crash_prevu = crash_prevu
 
 
 def _pas_de_tir(nom_modele):
@@ -443,7 +447,8 @@ class Tutoriel:
         if self.termine or self.echec:
             return
         u = getattr(scene, "u", None)
-        if u is not None and hasattr(scene, "cam") and (u.perdu or u.actif is None):
+        ecrase = u is not None and hasattr(scene, "cam") and (u.perdu or u.actif is None)
+        if ecrase and not getattr(self.s, "crash_prevu", False):
             self.echec = True                  # écrasé (ou plus rien à piloter) : on réessaiera
             sons.jouer("alerte")
             return
@@ -460,6 +465,10 @@ class Tutoriel:
             ok = False                 # pas de vaisseau actif, orbite pas encore calculée...
         if ok:
             self.suivant()
+            return
+        if ecrase:                         # crash « prévu » (Luna 2) : l'impact devait valider
+            self.echec = True              # l'étape. S'il n'a rien validé, c'est un raté :
+            sons.jouer("alerte")           # on propose de réessayer.
 
     # ------------------------------------------------------------------ bulle
     def dessiner(self, surf, scene, boutons, cherche):
