@@ -125,6 +125,14 @@ que les tutoriels : chaque objectif dit quoi faire, à toi de trouver comment.
   Terre (l'aide « Retour vers la Terre » calcule la poussée pour quitter la Lune).
 - **Apollo 13 (1970)** : le module de service a explosé ; le moteur d'Aquarius, le module
   lunaire, doit ramener l'équipage.
+- **Luna 2 (1959)** : le premier objet fabriqué par l'homme sur un autre monde. Pas
+  d'atterrissage en douceur : orbite, transfert vers la Lune, et fonce !
+- **Apollo-Soyouz (1975)** : un Apollo et un Soyouz s'amarrent en orbite basse — la première
+  poignée de main entre deux puissances rivales.
+- **Voyager 2 (1977)** : le « grand tour ». Met la sonde en orbite, vise Jupiter et laisse
+  le transfert t'emmener dans sa sphère d'influence.
+- **Cassini-Huygens (1997)** : en orbite d'attente autour de la Terre, la sonde attend sa
+  fenêtre de tir vers Saturne. À l'arrivée, freine pour rester en orbite.
 
 Comme les tutoriels, les scénarios se jouent à part (ta carrière n'est pas touchée), proposent
 « Réessayer » après un crash, et sont cochés une fois réussis.
@@ -159,7 +167,10 @@ confidentialité).
   ou *Bac à sable* (tout est débloqué, pas d'argent). La page **Réussites** coche les
   **jalons** (première orbite, premier crash, posés sur Mercure ou Callisto...) et affiche
   les compteurs de carrière (lancements, étages largués, vaisseaux perdus...) : ils sont
-  gardés d'une partie à l'autre et annoncés en vol (« ★ Nouveau jalon »).
+  gardés d'une partie à l'autre et annoncés en vol (« ★ Nouveau jalon »). À côté, l'écran
+  **Album photo** garde les grands moments de la partie : le jeu photographie les posés et
+  les amarrages, et le bouton **Photo** en vol (ou la touche `B` pour planter un drapeau)
+  ajoute les tiens. 20 photos au plus, consultables en plein écran, supprimables.
 - **Hangar** : clique sur les pièces à gauche pour les empiler **du nez vers le moteur**.
   Un clic sur une pièce de la fusée la sélectionne (`Suppr` la retire, `↑ ↓` la déplace,
   une nouvelle pièce s'insère juste en dessous). À droite : masse, prix, Δv et poussée/poids
@@ -204,6 +215,7 @@ confidentialité).
 | `1` … `8` (sans Maj) | SAS : stabiliser, prograde, rétrograde, radial +, radial −, vers la cible, dos à la cible, manœuvre |
 | `R` puis `I` `K` `J` `L` | RCS : translation avant / arrière / gauche / droite (amarrage) |
 | `P` | parachute (moins de 250 m/s) |
+| `B` | planter un drapeau (vaisseau posé) |
 | `U` | désamarrer |
 | `V` | référence de vitesse : surface / orbite / cible |
 
@@ -397,9 +409,13 @@ jeu/sons.py           sons fabriqués par le code (boucles et bruitages), cache 
 jeu/musique.py        musique d'ambiance composée en direct selon l'humeur du moment
 jeu/triche.py         menu secret : photos de la partie (retour en arrière), plein, options
 jeu/tutoriel.py       les huit tutoriels : situations de départ, étapes, bulle (moteur commun)
-jeu/scenarios.py      les missions historiques (Spoutnik, Vostok, Apollo 11, Apollo 13)
-jeu/univers.py        la simulation : physique, rails, étages, amarrage, atterrissage
-jeu/missions.py       les 20 missions et leurs conditions
+jeu/scenarios.py      les missions historiques (Spoutnik, Vostok, Apollo 11 et 13, Luna 2,
+                      Apollo-Soyouz, Voyager 2, Cassini-Huygens)
+jeu/univers.py        la simulation : physique, rails, étages, amarrage, atterrissage,
+                      drapeaux plantés
+jeu/missions.py       les 26 missions et leurs conditions
+jeu/jalons.py         les jalons de la page Réussites
+jeu/album.py          l'album photo : captures des posés et amarrages (dossier album/)
 jeu/sauvegarde.py     sauvegarde JSON
 jeu/interface.py      texte, boutons, panneaux, formats (distances, durées)
 jeu/rendu.py          caméra et dessin du monde (planètes, vaisseaux, trajectoires)
