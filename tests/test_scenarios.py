@@ -192,8 +192,54 @@ def apollo_soyouz():
     return app
 
 
+def voyager2():
+    """Voyager 2 : mise en orbite, transfert vers Jupiter, entrée dans sa SOI."""
+    app = nouvelle("voyager2")
+    tourner(app, lambda a: etape(a) == 1)
+    pilote_auto(app, pilote.MiseEnOrbite())
+    tourner(app, lambda a: etape(a) == 2)
+    u = app.univers
+    jupiter = u.par_nom["Jupiter"]
+    u.cibler(jupiter)
+    assert pilote.planifier_transfert(u, u.actif, jupiter), [m[0] for m in u.messages[-2:]]
+    pilote_auto(app, pilote.ExecuterNoeud())
+    journal = lambda txt: print("   t=%6.0f s  étape %s  %s" % (u.t, etape(app), txt))
+    def croiser(a):
+        a.univers.accel = MAX                       # traversée des mois de croisière
+    tourner(app, lambda a: etape(a) == 3, croiser); journal("entrée dans la SOI de Jupiter")
+    tourner(app, lambda a: a.tuto.termine, croiser)
+    return app
+
+
+def cassini():
+    """Cassini-Huygens : évasion, transfert vers Saturne, freinage pour rester en orbite."""
+    app = nouvelle("cassini")
+    tourner(app, lambda a: etape(a) == 1)
+    u = app.univers
+    saturne = u.par_nom["Saturne"]
+    u.cibler(saturne)                          # les tronçons se calculent vers la cible
+    tourner(app, lambda a: a.univers.actif.troncons)
+    assert pilote.planifier_transfert(u, u.actif, saturne), [m[0] for m in u.messages[-2:]]
+    pilote_auto(app, pilote.ExecuterNoeud())
+    journal = lambda txt: print("   t=%6.0f s  étape %s  %s" % (u.t, etape(app), txt))
+    def capturer(a):
+        u = a.univers; v = u.actif
+        if v is None:
+            return
+        if v.corps is saturne and not scenarios._en_orbite(v, saturne, 2000):
+            u.accel = 4                             # freinage fin : SAS RÉTRO à la périapside
+            v.sas = "retro"
+            v.gaz = 1.0 if abs(v.angle - (u.angle_sas(v) or v.angle)) < 0.3 else 0.0
+        else:
+            u.accel = MAX
+    tourner(app, lambda a: etape(a) == 3, capturer); journal("entrée dans la SOI de Saturne")
+    tourner(app, lambda a: a.tuto.termine, capturer)
+    return app
+
+
 def test_missions_jouees_jusquau_bout():
-    for nom in ("spoutnik", "vostok", "apollo13", "apollo11", "luna2", "apollo_soyouz"):
+    for nom in ("spoutnik", "vostok", "apollo13", "apollo11", "luna2", "apollo_soyouz",
+                "voyager2", "cassini"):
         t0 = time.time()
         app = globals()[nom]()
         assert app.tuto.termine and nom in reglages.TUTOS_FAITS

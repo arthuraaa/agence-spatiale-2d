@@ -26,6 +26,9 @@ LEM = ["port", "capsule", "reservoir_s", "moustique",                     # modu
 SOYOUZ = ["port", "capsule", "decoupleur", "reservoir_m", "alize", "port"]  # le Soyouz (ASTP) :
 # un port aux deux bouts, comme la station, pour que l'aide d'amarrage accroche le port
 # le plus proche quel que soit le côté d'où arrive Apollo.
+VOYAGER = ["sonde", "panneaux", "reservoir_m", "moustique", "decoupleur", "reservoir_l",
+           "reservoir_l", "atome", "decoupleur", "reservoir_xxl", "reservoir_xxl", "titan"]
+CASSINI = ["sonde", "panneaux", "reservoir_xxl", "atome"]                 # déjà en route pour Saturne
 
 
 # --------------------------------------------------------------------------- outils
@@ -150,6 +153,16 @@ def _depart_apollo_soyouz(app, u):
     u.actif = apollo
     app.aller_vol()
     _vue_orbite(app, terre.R + 12000)
+
+
+def _depart_cassini(app, u):
+    """Cassini, déjà partie de la Terre : en attente sur une orbite haute circulaire,
+    prête à filer vers Saturne dès sa fenêtre de tir."""
+    terre = u.terre
+    cassini = construire("Cassini", CASSINI, terre)
+    placer_en_orbite(u, cassini, terre, 60_000, 0.4)
+    app.aller_vol()
+    _vue_orbite(app, terre.R + 60_000)
 
 
 def _impact_sur(corps_nom):
@@ -319,6 +332,49 @@ MISSIONS = [
               "future station internationale."),
     ], conseil="cible Soyouz d'abord : le pilote sait faire le rendez-vous et l'amarrage tout "
                "seul (option « Aides »).", genre="mission", annee=1975),
+
+    Scenario("voyager2", "Voyager 2", "Le grand tour des géantes",
+             _depart_pas_de_tir("Voyager 2", VOYAGER), [
+        Etape("Août 1977. Voyager 2 s'envole pour le « grand tour » : les quatre géantes sont "
+              "alignées comme une fois tous les 176 ans, et ses réservoirs pleins d'atome vont "
+              "en profiter. À toi de la mettre sur sa route."),
+        Etape("Décolle et mets Voyager 2 en orbite : périapside au-dessus de 8 km. "
+              "[[Besoin d'aide ? {PILOTE}, puis « Mise en orbite ».|]]",
+              lambda t, sc: _pe(sc.u) > 8000 and sc.u.actif.gaz == 0.0),
+        Etape("Cible Jupiter (dézoome, puis {TAPER} dessus), planifie le transfert et exécute-le : "
+              "il faut entrer dans sa sphère d'influence. [[Dézoome, {TAPER} sur Jupiter, puis "
+              "{PILOTE} : « Transfert vers Jupiter », et « Exécuter la manœuvre ». Le voyage dure "
+              "des mois : accélère le temps !|Dézoome, tape sur Jupiter pour la cibler, pose un "
+              "nœud qui allonge ton orbite jusqu'à elle, puis exécute-le.]]",
+              lambda t, sc: sc.u.actif is not None and "soi:Jupiter" in sc.u.actif.drapeaux),
+        Etape("Voyager 2 survole Jupiter en 1979, Saturne en 1981, Uranus en 1986, Neptune en "
+              "1989 : la seule sonde à avoir vu les quatre. Aujourd'hui elle flotte dans "
+              "l'espace interstellaire, et elle parle encore."),
+    ], conseil="mise en orbite, puis cible Jupiter et laisse le pilote planifier le transfert ; "
+               "le plus dur est de penser à accélérer le temps.", genre="mission", annee=1977),
+
+    Scenario("cassini", "Cassini-Huygens", "L'orbiteur et l'atterrisseur de Saturne",
+             _depart_cassini, [
+        Etape("Octobre 1997. Cassini-Huygens quitte la Terre pour Saturne : l'orbiteur de la "
+              "NASA porte Huygens, l'atterrisseur européen destiné à Titan. Voilà la sonde en "
+              "orbite d'attente, réservoirs pleins : plus qu'à viser juste."),
+        Etape("Quitte l'orbite terrestre : cible Saturne ({TAPER} dessus), planifie le transfert "
+              "et exécute-le. [[{TAPER} sur Saturne, puis {PILOTE} : « Transfert vers Saturne », "
+              "et « Exécuter la manœuvre ». La fenêtre de tir peut être dans plusieurs jours : "
+              "accélère le temps !|Tape sur Saturne pour la cibler, pose un nœud d'évasion vers "
+              "elle, puis exécute-le.]]",
+              lambda t, sc: sc.u.actif is not None and "soi:Saturne" in sc.u.actif.drapeaux),
+        Etape("Voilà Saturne et ses anneaux. Freine pour rester en orbite : périapside "
+              "au-dessus des nuages. [[SAS RÉTRO, et pousse à la périapside jusqu'à ce que "
+              "l'orbite se ferme.|SAS RÉTRO, et pousse à la périapside jusqu'à ce que l'orbite "
+              "se ferme.]]",
+              lambda t, sc: sc.u.actif is not None
+              and _en_orbite(sc.u.actif, sc.u.par_nom["Saturne"], 2000)),
+        Etape("Le 1ᵉʳ juillet 2004, Cassini s'insère en orbite de Saturne. Le 25 décembre, "
+              "Huygens se détache ; le 14 janvier 2005, il se pose sur Titan : première pose "
+              "en douceur dans la lointaine périphérie du système solaire."),
+    ], conseil="cible Saturne dès le départ ; à l'arrivée, freine à la périapside en SAS RÉTRO "
+               "jusqu'à ce que l'orbite se ferme.", genre="mission", annee=1997),
 ]
 
 for _m in MISSIONS:
