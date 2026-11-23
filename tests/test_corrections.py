@@ -223,7 +223,7 @@ def test_boutons_sas_petit_ecran():
 
         def ouvrir(self, quoi):
             pass
-        basculer_rcs = changer_reference = changer_camera = recuperer = recentrer = ouvrir
+        basculer_rcs = changer_reference = changer_camera = recuperer = recentrer = prendre_photo = ouvrir
 
     u = univers_()
     scene = Scene()
@@ -388,7 +388,7 @@ def test_barre_temps_43():
         cam = Cam()
         def ouvrir(self, quoi):
             pass
-        basculer_rcs = changer_reference = changer_camera = recuperer = recentrer = temps_normal = ouvrir
+        basculer_rcs = changer_reference = changer_camera = recuperer = recentrer = temps_normal = prendre_photo = ouvrir
 
     u = univers_()
     scene = Scene()

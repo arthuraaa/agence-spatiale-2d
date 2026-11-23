@@ -10,7 +10,7 @@ from .rendu import Camera, dessiner_monde, objet_sous_souris
 from .hud import Hud
 from .hud_tactile import HudTactile
 from .tactile import Doigts
-from . import plateforme, reglages, sons, triche
+from . import plateforme, reglages, sons, triche, album
 from .corps import Corps
 from .interface import fmt_masse, texte, texte_multiligne, panneau, Bouton, fmt_nombre
 from .missions import MISSIONS
@@ -108,6 +108,12 @@ class SceneVol:
         a = self.u.actif
         if a is not None:
             a.rcs = not a.rcs
+
+    def prendre_photo(self):
+        """Photo à la demande du joueur : prise au prochain dessin (monde seul, sans le HUD)."""
+        a = self.u.actif
+        corps = a.corps.nom if a is not None and a.corps is not None else "vol"
+        self.u.photos_demandees.append(("vol", corps))
 
     def changer_reference(self):
         a = self.u.actif
@@ -575,6 +581,9 @@ class SceneVol:
         l, h = surf.get_size()
         self.cam.taille(l, h)
         dessiner_monde(surf, self.u, self.cam, self.temps_reel)
+        while self.u.photos_demandees:           # photo APRÈS le monde, AVANT le HUD
+            genre, corps = self.u.photos_demandees.pop(0)
+            album.prendre(surf, genre, corps)
         self.hud.dessiner(surf, self.u, self.cam)
         self.boutons = []
         if self.panneau == "missions":

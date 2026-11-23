@@ -982,6 +982,8 @@ class Univers:
                 p.parachute, p.ouverture = "plie", 0.0
             v.drapeaux.add("pose:" + c.nom)
             self.stat("poses")
+            if not self.tutoriel:                # photo du moment (hors tutoriels/scénarios)
+                self.photos_demandees.append(("pose", c.nom))
             if v is self.actif:
                 self.dire(t("Posé sur {corps} ({v:.1f} m/s)", corps=t(c.nom), v=-v_vert), VERT)
                 self.accel = 0
@@ -1195,6 +1197,8 @@ class Univers:
         recepteur.gaz = 0.0
         self.dire(t("Amarrage réussi avec {nom} !", nom=nom_b), VERT, 6)
         self.bruit("amarrage")
+        if not self.tutoriel:                    # photo du moment (hors tutoriels/scénarios)
+            self.photos_demandees.append(("amarrage", recepteur.corps.nom))
 
     # ------------------------------------------------------ tâches périodiques
     def _periodique(self, dt_reel):

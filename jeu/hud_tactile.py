@@ -131,6 +131,7 @@ class HudTactile(Hud):
             contexte.append((t("Parachute"), u.ouvrir_parachute))
         if a.mode == "pose" and not a.corps.gazeux:
             contexte.append((t("Drapeau"), u.planter_drapeau))
+        contexte.append((t("Photo"), sc.prendre_photo))
         for lib, act in contexte:
             y -= 6 + 44
             b.append(Bouton((x0, y, L_COLONNE, 44), lib, act, 17))

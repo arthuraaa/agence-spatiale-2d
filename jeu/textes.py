@@ -566,6 +566,7 @@ TOUT = {
     "Neptune": {"fr": "Neptune", "en": "Neptune"},
     "Pluton": {"fr": "Pluton", "en": "Pluto"},
     "Posé": {"fr": "Posé", "en": "Landed"},
+    "Photo": {"fr": "Photo", "en": "Photo"},
     "Vol atmosphérique": {"fr": "Vol atmosphérique", "en": "Atmospheric flight"},
     "En vol": {"fr": "En vol", "en": "In flight"},
     "Trajectoire d'évasion": {"fr": "Trajectoire d'évasion", "en": "Escape trajectory"},

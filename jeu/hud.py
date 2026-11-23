@@ -117,6 +117,8 @@ class Hud:
             if a.mode == "pose" and not a.corps.gazeux:
                 b.append(Bouton((x, y, 150, 28), t("Drapeau (B)"), u.planter_drapeau))
                 y -= 32
+            b.append(Bouton((x, y, 150, 28), t("Photo"), sc.prendre_photo))
+            y -= 32
             if sc.cam.hors_vaisseau(u):
                 b.append(Bouton((x - 40, y, 190, 28), t("Revenir au vaisseau (F)"), sc.recentrer, 13))
                 y -= 32

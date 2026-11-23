@@ -39,6 +39,10 @@ def main():
     for f in ("sauvegarde.json", "reglages.json", "erreur.txt"):     # ce que les tests ont pu laisser
         if os.path.exists(os.path.join(RACINE, f)):
             os.remove(os.path.join(RACINE, f))
+    dossier_album = os.path.join(RACINE, "album")                     # photos de test éventuelles
+    if os.path.isdir(dossier_album):
+        import shutil
+        shutil.rmtree(dossier_album, ignore_errors=True)
     print("%d fichiers de tests, %d échec(s), %.0f s" % (len(fichiers), len(echecs), time.time() - debut))
     sys.exit(1 if echecs else 0)
 
