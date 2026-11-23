@@ -127,12 +127,12 @@ def test_pilote_se_pose_sur_terre():
     assert sum(p.carburant for p in v.pieces) > 200, "le pilote a trop brûlé : il doit utiliser le parachute"
 
 
-def en_orbite(u, nom_corps):
-    """Une capsule « Sélène » (moteur moustique) en orbite basse autour du corps donné."""
+def en_orbite(u, nom_corps, moteur="moustique"):
+    """Une capsule « Sélène » (moteur au choix) en orbite basse autour du corps donné."""
     from math import sqrt
     from jeu.univers import Orbite
     c = u.par_nom[nom_corps]
-    v = u.lancer("Essai", ["capsule", "reservoir_m", "train", "moustique"])
+    v = u.lancer("Essai", ["capsule", "reservoir_m", "train", moteur])
     r = c.R + c.atm_h + 5000.0
     v.corps, v.mode = c, "rails"
     v.x, v.y = r, 0.0
@@ -167,6 +167,122 @@ def test_pilote_refuse_mars():
     assert carbu > 1500, "le pilote a brûlé du carburant pour rien"
 
 
+def test_retour_avec_train_accepte():
+    """Étage de retour lunaire avec train (voile ~8,7 m/s, entre la limite sans train
+    8 m/s et celle avec train 14 m/s) : le pilote devait le refuser « moteur trop
+    faible » car son seuil de voile ignorait le train. Le pilote désorbite lui-même,
+    ouvre la voile et se pose."""
+    app = jeu_main.Application(tactile=True)
+    reglages.AIDES = True
+    app.nouvelle_partie(True)
+    u = app.univers
+    v = en_orbite(u, "Terre")
+    v.pieces[1].carburant = 1400.0      # un retour lunaire a déjà brûlé une partie du réservoir
+    v.cache_etat = (None, None)
+    from math import sqrt
+    c = u.terre
+    vt = sqrt(2.0 * v.masse() * c.mu / (c.R * c.R) / (c.rho0 * 700.0))
+    print("   voile de l'étage de retour : %.1f m/s (train : %s)" % (vt, v.a_un_train()))
+    assert 8.0 < vt < 14.0, "l'étage doit être entre les deux limites pour ce test"
+    u.lancer_pilote(pilote.Atterrissage())
+    k = 0
+    while v.mode != "pose" and not v.detruit and k < 60 * 60 * 60:
+        u.avancer(DT)
+        k += 1
+    assert not any("moteur trop faible" in m[0] for m in u.messages), [m[0] for m in u.messages[-2:]]
+    print("   posé :", [m[0] for m in u.messages[-1:]])
+    assert v.mode == "pose" and not v.detruit, [m[0] for m in u.messages[-2:]]
+
+
+def test_attente_dans_le_vide():
+    """Entrée rasante au-dessus de l'atmosphère, trop vite pour ouvrir la voile
+    (250 m/s) et moteur plus faible que la gravité : le pilote doit PATIENTER,
+    gas et carburant intacts, tant que l'air seul peut amener la voile à sa vitesse
+    d'ouverture (il mettait plein gaz dans le vide et vidait tout le réservoir)."""
+    app = jeu_main.Application(tactile=True)
+    reglages.AIDES = True
+    app.nouvelle_partie(True)
+    u = app.univers
+    v = en_orbite(u, "Terre")
+    v.pieces[1].carburant = 700.0        # léger : l'air seul amène la voile à 250 m/s
+    from math import sqrt
+    from jeu.univers import Orbite
+    c = u.terre
+    r = c.R + 12_000.0                   # 5 km au-dessus de l'atmosphère
+    v.mode = "rails"
+    v.x, v.y = r, 0.0
+    # sous la vitesse circulaire et un peu tombant : entrée rasante (comme après
+    # une désorbitation), vitesse ~690 m/s, moteur incapable d'arrêter la chute
+    v.vx, v.vy = -100.0, 0.94 * sqrt(c.mu / r)
+    v.angle, v.omega, v.gaz = 0.0, 0.0, 0.0
+    v.orbite = Orbite(v.x, v.y, v.vx, v.vy, c.mu, u.t)
+    v.troncons = []
+    v.cache_etat = (None, None)
+    u._predire(v)
+    u.lancer_pilote(pilote.Atterrissage())
+    carb0 = sum(p.carburant for p in v.pieces)
+    entre = False
+    for k in range(60 * 300):
+        u.avancer(DT)
+        if u.altitude(v) < c.atm_h:                     # dans l'air : le freinage y est jugé
+            entre = True
+            break
+        assert v.gaz == 0.0, "gaz à %.2f au-dessus de l'atmosphère, à %.0f m/s" % (
+            v.gaz, hypot(*u.etat(v)[2:]))
+        assert v.detruit is False
+    assert entre, "jamais entré dans l'atmosphère"
+    assert sum(p.carburant for p in v.pieces) == carb0, "carburant brûlé dans le vide"
+    print("   traversée du vide à plus de 250 m/s : aucun gaz, %.0f kg intacts" % carb0)
+
+
+def test_desorbite_haut_dans_le_ciel():
+    """Rentrée lunaire haut dans le ciel (4200 km, près de l'apoapside, trajectoire
+    rasant la planète) : la désorbitation doit se faire par rapport à l'ORBITE. Le
+    pilote utilisait le « rétro surface » réglé pour l'atterrissage — direction qui
+    dépend de la rotation de la planète et qui, là haut, ne veut plus rien dire :
+    il poussait à côté, l'orbite s'échappait et tout le carburant partait pour rien."""
+    app = jeu_main.Application(tactile=True)
+    reglages.AIDES = True
+    app.nouvelle_partie(True)
+    u = app.univers
+    # Alizé (TWR > 1) : assez fort pour être accepté par le pilote — le moustique
+    # (TWR 0,55) est refusé d'entrée « moteur trop faible » et le test serait vide.
+    v = en_orbite(u, "Terre", moteur="alize")
+    from math import sqrt
+    from jeu.univers import Orbite
+    c = u.terre
+    r = c.R + 4_200_000.0
+    # près de l'apoapside d'une orbite qui rase la planète (rp à ~44 km d'altitude,
+    # donc sans toucher le sol ni l'atmosphère) : vitesse tangentielle dérisoire
+    a = (r + c.R + 44_000.0) / 2.0
+    vt = sqrt(c.mu * (2.0 / r - 1.0 / a))
+    v.mode = "rails"
+    v.x, v.y = r, 0.0
+    v.vx, v.vy = 2.0, vt                 # un peu montante : v_vert > 0
+    v.angle = atan2(v.vy, v.vx)
+    v.omega = v.gaz = 0.0
+    v.orbite = Orbite(v.x, v.y, v.vx, v.vy, c.mu, u.t)
+    v.troncons = []
+    v.cache_etat = (None, None)
+    u._predire(v)
+    o = v.orbite
+    print("   apoapside à %.0f km, rp à %.0f km d'altitude" % ((o.ra - c.R) / 1e3, (o.rp - c.R) / 1e3))
+    assert o.elliptique and 0.0 < o.rp - c.R < c.atm_h + 60_000.0
+    u.lancer_pilote(pilote.Atterrissage())
+    for _ in range(60 * 120):                        # deux minutes : il n'en faut pas plus
+        u.avancer(DT)
+        if u.pilote is None or v.mode == "pose" or v.detruit:
+            break
+    o = v.orbite
+    carb = sum(p.carburant for p in v.pieces)
+    print("   après 2 min : carburant %.0f kg, orbite %s" % (
+        carb, "échappée" if not o.elliptique else "rp à %.0f km" % ((o.rp - c.R) / 1e3)))
+    assert o.elliptique, "l'orbite s'est échappée : la poussée allait dans le mauvais sens"
+    assert o.rp < c.R, "le rp n'a pas baissé : le pilote n'a jamais désorbité (test vide)"
+    assert carb > 1800.0, "désorbitation de %.0f m/s : %.0f kg brûlés pour rien" % (
+        2000.0 - carb, 2000.0 - carb)
+
+
 def test_pilote_se_pose_sur_titan():
     """Sur Titan l'atmosphère est si dense que le parachute se pose tout seul,
     sans un gramme de carburant (le pilote n'avait pas le droit d'y voir un obstacle)."""
@@ -190,5 +306,8 @@ if __name__ == "__main__":
     test_pilote_se_pose()
     test_pilote_se_pose_sur_terre()
     test_pilote_refuse_mars()
+    test_retour_avec_train_accepte()
+    test_attente_dans_le_vide()
+    test_desorbite_haut_dans_le_ciel()
     test_pilote_se_pose_sur_titan()
     print("--- atterrissage : OK")

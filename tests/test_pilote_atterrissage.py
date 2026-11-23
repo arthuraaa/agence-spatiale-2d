@@ -117,8 +117,58 @@ def test_moteur_seul_sans_parachute():
     assert sum(p.carburant for p in v.pieces) > 0.0, "carburant gaspillé en plein ciel"
 
 
+def test_retour_lunaire_capsule_nue():
+    """Retour de Lune complet, comme les scénarios Apollo : brûlage de retour, largage
+    des deux étages avant l'atmosphère, puis pose sous voile pilotée. Le verdict de
+    rentrée ne modélisait ni la voile ni son gonflage (3 s) : il déclarait « posable »
+    un contact à ~200 m/s — la voile ne s'ouvrait qu'à 30 m du sol et la capsule
+    s'écrasait (« posé de travers » / « vitesse horizontale trop forte »)."""
+    from jeu.constantes import ACCELERATIONS
+    reglages.AIDES = True
+    u = Univers(bac_a_sable=True)
+    lune = next(c for c in u.corps if c.nom == "Lune")
+    v = construire("Apollo", ["capsule", "decoupleur", "reservoir_m", "train",
+                              "moustique", "decoupleur", "reservoir_l", "alize"], lune)
+    v.corps = lune
+    r = lune.R + 25_000.0
+    ang, vit = 1.0, sqrt(lune.mu / r)
+    v.x, v.y = r * cos(ang), r * sin(ang)
+    v.vx, v.vy = -vit * sin(ang), vit * cos(ang)
+    v.angle, v.omega, v.gaz = atan2(v.vy, v.vx), 0.0, 0.0
+    v.mode = "rails"
+    v.orbite = Orbite(v.x, v.y, v.vx, v.vy, lune.mu, u.t)
+    u.vaisseaux.append(v)
+    u.actif = v
+    u._predire(v)
+    assert pilote.planifier_retour(u, v), [m[0] for m in u.messages][-2:]
+    u.lancer_pilote(pilote.ExecuterNoeud())
+
+    def rouler(arret, limite):
+        for _ in range(limite):
+            if u.pilote is None and v.noeud is None and u.accel < len(ACCELERATIONS) - 3:
+                u.changer_acceleration(len(ACCELERATIONS) - 3)
+            u.avancer(DT)
+            if arret():
+                return True
+            assert not v.detruit, [m[0] for m in u.messages][-3:]
+        return False
+
+    assert rouler(lambda: v.corps is not lune, 400_000), "manœuvre de retour ratée"
+    assert rouler(lambda: v.corps.nom == "Terre", 600_000), "jamais revenu à la Terre"
+    # comme Apollo : tout larguer avant l'atmosphère — une capsule nue passe la rentrée
+    u.separer_etage()
+    u.separer_etage()
+    assert len(v.pieces) <= 2, "la capsule n'est pas seule : %d pièces" % len(v.pieces)
+    u.lancer_pilote(pilote.Atterrissage())
+    assert rouler(lambda: v.mode == "pose", 900_000), [m[0] for m in u.messages][-3:]
+    reglages.AIDES = False
+    assert v.mode == "pose" and not v.detruit, [m[0] for m in u.messages][-3:]
+    assert "pose:Terre" in v.drapeaux, "posé sur Terre"
+
+
 if __name__ == "__main__":
     test_atterrissage_automatique()
     test_moteur_seul_sans_parachute()
     test_refus_sans_surface_ni_moteur()
+    test_retour_lunaire_capsule_nue()
     print("--- pilote d'atterrissage : OK")

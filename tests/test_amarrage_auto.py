@@ -51,6 +51,39 @@ def test_amarrage_proche():
     assert ok and "amarre:Station Alpha" in a.drapeaux and station not in u.vaisseaux, [m[0] for m in u.messages[-3:]]
 
 
+def test_amarrage_auto_sur_port_lateral():
+    """Le pilote d'amarrage doit savoir viser le port latéral d'une station, s'y amarrer,
+    puis S'ARRÊTER : après la fusion, c'est la cible qui reste et qu'on pilote — l'aide
+    continuait à manœuvrer la station et vidait son monergol pour rien."""
+    reglages.AIDES = True
+    u = Univers(bac_a_sable=True)
+    from jeu.pieces import Piece
+    station = u.vaisseaux[0]
+    station.pieces[1].laterales = [Piece("port_radial")]
+    es = u.etat(station)
+    k = station.ports_radiaux()[0]
+    v = construire("Navette", ["port", "capsule", "reservoir_s", "moustique"], u.terre)
+    bx, by, bdx, bdy = station.point_port_radial(es, k)
+    g = v.geometrie()
+    v.angle = atan2(-bdy, -bdx)                            # le nez face au port latéral
+    v.x = bx + bdx * 60.0 + bdx * g.nez
+    v.y = by + bdy * 60.0 + bdy * g.nez
+    v.vx, v.vy = es[2] - bdx * 0.8, es[3] - bdy * 0.8
+    v.mode = "physique"
+    u.vaisseaux.append(v)
+    u.actif = v
+    u.cibler(station)
+    mono_station = station.mono()
+    u.lancer_pilote(pilote.Amarrage(station))
+    ok = laisser_piloter(u, 60 * 60 * 40)
+    assert ok and len(u.vaisseaux) == 1 and u.actif is station, [m[0] for m in u.messages][-3:]
+    assert [p.m.cle for p in station.pieces[1].laterales] == \
+        ["port_radial", "port", "capsule", "reservoir_s", "moustique"], \
+        "pas amarré sur le port latéral"
+    assert station.mono() == mono_station, \
+        "la station a brûlé du monergol APRÈS l'amarrage (%.1f -> %.1f)" % (mono_station, station.mono())
+
+
 def test_rendez_vous_depuis_le_sol():
     """Du pas de tir jusqu'au port de la station, sans aucune intervention."""
     reglages.AIDES = True
@@ -173,5 +206,6 @@ if __name__ == "__main__":
     test_transfert_carburant()
     test_interface_carburant_et_carte()
     test_amarrage_proche()
+    test_amarrage_auto_sur_port_lateral()
     test_rendez_vous_depuis_le_sol()
     print("--- amarrage, carburant, carte : OK")

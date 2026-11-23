@@ -635,6 +635,7 @@ TOUT = {
     "Missions": {"fr": "Missions", "en": "Missions"},
     "Options": {"fr": "Options", "en": "Options"},
     "Manœuvre exécutée": {"fr": "Manœuvre exécutée", "en": "Maneuver executed"},
+    "Manœuvre interrompue : plus de carburant": {"fr": "Manœuvre interrompue : plus de carburant", "en": "Maneuver aborted: out of fuel"},
     "Rendez-vous : il faut être en orbite autour du même corps que la cible": {"fr": "Rendez-vous : il faut être en orbite autour du même corps que la cible", "en": "Rendezvous: you must orbit the same body as the target"},
     "Rendez-vous : aucune trajectoire trouvée": {"fr": "Rendez-vous : aucune trajectoire trouvée", "en": "Rendezvous: no trajectory found"},
     "Rendez-vous planifié : passage à {km:.1f} km de {corps} ({dv:+.0f} m/s)": {"fr": "Rendez-vous planifié : passage à {km:.1f} km de {corps} ({dv:+.0f} m/s)", "en": "Rendezvous planned: closest approach {km:.1f} km from {corps} ({dv:+.0f} m/s)"},

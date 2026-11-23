@@ -283,9 +283,90 @@ def test_souris():
     assert abs((v.noeud.t - u.t) - v.orbite.delai_apoapside(u.t)) < 1.0
 
 
+def test_circularisation_lunaire():
+    """La circularisation automatique autour d'un petit corps (la Lune) doit donner
+    une orbite à peu près ronde. Un arrêt plus serré qu'aujourd'hui (0,4 % d'écart
+    au lieu de 2,4 %) paraissait mieux, mais il change la moindre combustion et fait
+    dévier les trajectoires de retour — le scénario Apollo 11 (test_scenarios) rate
+    alors la Terre : on garde le seuil historique et cette garde anti-dérive."""
+    from math import cos, sin, atan2
+    from jeu.orbite import Orbite
+    from jeu.vaisseau import construire
+    from jeu import pilote, reglages
+    u = Univers(bac_a_sable=True)
+    lune = next(c for c in u.corps if c.nom == "Lune")
+    v = construire("Essai", ["capsule", "reservoir_m", "alize"], lune)
+    v.corps = lune
+    r, ra = lune.R + 20000.0, lune.R + 100000.0
+    va = sqrt(lune.mu * (2.0 / r - 1.0 / ra))
+    ang = 2.2
+    v.x, v.y = r * cos(ang), r * sin(ang)
+    v.vx, v.vy = -va * sin(ang), va * cos(ang)
+    v.angle, v.omega, v.gaz = atan2(v.vy, v.vx), 0.0, 0.0
+    v.mode = "rails"
+    v.orbite = Orbite(v.x, v.y, v.vx, v.vy, lune.mu, u.t)
+    u.vaisseaux.append(v)
+    u.actif = v
+    u._predire(v)
+    reglages.AIDES = True
+    assert pilote.planifier_circularisation(u, v) and v.noeud is not None
+    u.lancer_pilote(pilote.ExecuterNoeud())
+    for _ in range(60 * 3600):
+        u.avancer(DT)
+        if u.pilote is None or v.detruit:
+            break
+    reglages.AIDES = False
+    assert not v.detruit and v.noeud is None, [m[0] for m in u.messages][-2:]
+    o = v.orbite
+    print("   Lune : Pe %.0f m / Ap %.0f m (écart %.1f %%)" % (
+        o.rp - lune.R, o.ra - lune.R, 100.0 * (o.ra - o.rp) / o.ra))
+    assert (o.ra - o.rp) / o.ra < 0.05, "circularisation lunaire trop ovale"
+
+
+def test_manoeuvre_a_sec():
+    """Étage à sec en pleine manœuvre automatique : après étagement raté (plus de moteur),
+    le pilote abandonne en COUPANT les gaz et en prévenant — il laissait la manette à fond
+    en silence, et un ravitaillement plus tard aurait rallumé le moteur à 100 %."""
+    from math import cos, sin, atan2
+    from jeu.orbite import Orbite
+    from jeu.vaisseau import construire
+    from jeu import pilote, reglages
+    u = Univers(bac_a_sable=True)
+    c = next(cc for cc in u.corps if cc.nom == "Terre")
+    v = construire("Essai", ["capsule", "decoupleur", "reservoir_s", "alize"], c)
+    v.corps = c
+    r, ra = c.R + 20000.0, c.R + 100000.0
+    va = sqrt(c.mu * (2.0 / r - 1.0 / ra))
+    ang = 2.2
+    v.x, v.y = r * cos(ang), r * sin(ang)
+    v.vx, v.vy = -va * sin(ang), va * cos(ang)
+    v.angle, v.omega, v.gaz = atan2(v.vy, v.vx), 0.0, 0.0
+    v.mode = "rails"
+    v.orbite = Orbite(v.x, v.y, v.vx, v.vy, c.mu, u.t)
+    u.vaisseaux.append(v)
+    u.actif = v
+    u._predire(v)
+    for p in v.pieces:
+        if p.m.cle == "reservoir_s":
+            p.carburant = 3.0                    # à peine quelques m/s, bien moins que le Δv
+    reglages.AIDES = True
+    assert pilote.planifier_circularisation(u, v) and v.noeud is not None
+    u.lancer_pilote(pilote.ExecuterNoeud())
+    for _ in range(60 * 3600):
+        u.avancer(DT)
+        if u.pilote is None:
+            break
+    reglages.AIDES = False
+    assert v.gaz == 0.0, "gaz laissé à %.2f après l'abandon de la manœuvre" % v.gaz
+    assert any("plus de carburant" in m[0] for m in u.messages), [m[0] for m in u.messages][-3:]
+    print("   manœuvre à sec : gaz coupé, message affiché, vaisseau intact")
+
+
 if __name__ == "__main__":
     test_circularisation()
+    test_circularisation_lunaire()
     test_reglages()
+    test_manoeuvre_a_sec()
     test_transfert_lunaire()
     test_sauvegarde_noeud()
     test_poussee_hors_fenetre()
