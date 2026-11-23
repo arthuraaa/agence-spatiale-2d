@@ -90,6 +90,17 @@ def vignette(chemin, hauteur=110):
     return image
 
 
+def image(chemin, l_max, h_max):
+    """La photo entière, réduite pour tenir dans (l_max, h_max) ; None si illisible."""
+    try:
+        img = pygame.image.load(chemin)
+    except Exception:
+        return None
+    f = min(l_max / img.get_width(), h_max / img.get_height(), 1.0)
+    return pygame.transform.smoothscale(img, (max(1, round(img.get_width() * f)),
+                                              max(1, round(img.get_height() * f))))
+
+
 def libelle(chemin):
     """Étiquette lisible déduite du nom : « Posé — Lune — 23/11 14:05 »."""
     nom = os.path.basename(chemin)

@@ -15,7 +15,8 @@ from . import sauvegarde, plateforme, reglages, sons, textes
 class SceneMenu:
     def __init__(self, app, vue="principal"):
         self.app = app
-        self.vue = vue                    # "principal", "tutos", "options", "reussites", "apropos"...
+        self.vue = vue                    # "principal", "tutos", "options", "reussites", "album"...
+        self.photo_index = 0              # photo affichée en grand (vue "photo")
         self.boutons = []
         self.doigts = Doigts()            # sur téléphone, les doigts remplacent la souris
         self.t = 0.0
@@ -24,7 +25,8 @@ class SceneMenu:
 
     def evenement(self, ev):
         if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
-            if self.vue in ("tutos", "options", "scenarios", "reussites", "apropos"):
+            if self.vue in ("tutos", "options", "scenarios", "reussites", "apropos",
+                            "album", "photo"):
                 self.vue = "principal"
             else:
                 self.app.quitter()
@@ -76,24 +78,32 @@ class SceneMenu:
             self._liste_tutos(surf, l, h, souris, genre="mission")
         elif self.vue == "reussites":
             self._page_reussites(surf, l, h, souris)
+        elif self.vue == "album":
+            self._page_album(surf, l, h, souris)
+        elif self.vue == "photo":
+            self._page_photo(surf, l, h, souris)
         elif self.vue == "apropos":
             self._page_apropos(surf, l, h, souris)
         else:
             entrees = [(t("continuer"), app.continuer, sauvegarde.sauvegarde_existe()),
                        (t("nouvelle_carriere"), lambda: app.nouvelle_partie(False), True),
                        (t("bac_a_sable"), lambda: app.nouvelle_partie(True), True),
-                       (None, None, True),                          # Tutoriels | Scénarios (côte à côte)
-                       (t("reussites_titre"), lambda: setattr(self, "vue", "reussites"), True),
+                       (None, None, True),                          # Tutoriels | Scénarios
+                       (None, None, True),                          # Réussites | Album
                        (t("options"), lambda: setattr(self, "vue", "options"), True),
                        (t("quitter"), app.quitter, True)]
-            y0 = int(h * 0.34)
-            self.boutons = [Bouton((l // 2 - 160, y0 + 47 * k, 320, 40), lib, act, 17, actif=ok)
+            y0 = int(h * 0.30)                      # 8 rangées en 540 px : pas de 46 px
+            self.boutons = [Bouton((l // 2 - 160, y0 + 46 * k, 320, 40), lib, act, 17, actif=ok)
                             for k, (lib, act, ok) in enumerate(entrees) if lib is not None]
-            k = [e[0] for e in entrees].index(None)
-            self.boutons.append(Bouton((l // 2 - 160, y0 + 47 * k, 156, 40), t("tutoriels"),
+            k1, k2 = [k for k, e in enumerate(entrees) if e[0] is None]
+            self.boutons.append(Bouton((l // 2 - 160, y0 + 46 * k1, 156, 40), t("tutoriels"),
                                        lambda: setattr(self, "vue", "tutos"), 17))
-            self.boutons.append(Bouton((l // 2 + 4, y0 + 47 * k, 156, 40), t("scenarios"),
+            self.boutons.append(Bouton((l // 2 + 4, y0 + 46 * k1, 156, 40), t("scenarios"),
                                        lambda: setattr(self, "vue", "scenarios"), 17))
+            self.boutons.append(Bouton((l // 2 - 160, y0 + 46 * k2, 156, 40), t("reussites_titre"),
+                                       lambda: setattr(self, "vue", "reussites"), 17))
+            self.boutons.append(Bouton((l // 2 + 4, y0 + 46 * k2, 156, 40), t("album_titre"),
+                                       lambda: setattr(self, "vue", "album"), 17))
             for b in self.boutons:
                 b.dessiner(surf, souris)
         pied = (t("pied_tactile", version=__version__) if plateforme.TACTILE
@@ -154,6 +164,63 @@ class SceneMenu:
                    lambda: setattr(self, "vue", "principal"), 16)
         b.dessiner(surf, souris)
         self.boutons = [b]
+
+    def _page_album(self, surf, l, h, souris):
+        """Les photos de la partie (pose, amarrage, demande du joueur)."""
+        from . import album
+        texte(surf, t("album_titre"), (l // 2, int(h * 0.30)), 20, BLANC, gras=True, ancre="c")
+        photos = album.lister()
+        self.boutons = []
+        if not photos:
+            texte(surf, t("album_vide"), (l // 2, int(h * 0.52)), 14, GRIS, ancre="c")
+        else:
+            y0 = int(h * 0.30) + 28
+            dispo = (h - 76) - y0                     # place pour la grille, bouton Retour en bas
+            ch, cw = 110, 196                         # vignette, réduite si la grille déborde
+            from math import ceil
+            while ch > 50 and ceil(len(photos) / max(1, (l - 40) // (cw + 10))) * (ch + 8) > dispo:
+                ch -= 10
+                cw = round(ch * 1.8)
+            par_ligne = max(1, (l - 40) // (cw + 10))
+            x0 = (l - min(len(photos), par_ligne) * (cw + 10) + 10) // 2
+            for i, chemin in enumerate(photos):
+                c, r = i % par_ligne, i // par_ligne
+                x, y = x0 + c * (cw + 10), y0 + r * (ch + 8)
+                v = album.vignette(chemin, ch)
+                if v is None:
+                    continue
+                b = Bouton((x, y, v.get_width(), v.get_height()), "",
+                           lambda i=i: self._ouvrir_photo(i), 12)
+                b.dessiner(surf, souris)
+                surf.blit(v, (x, y))
+                self.boutons.append(b)
+        b = Bouton((l // 2 - 90, h - 76, 180, 40), t("retour"),
+                   lambda: setattr(self, "vue", "principal"), 16)
+        b.dessiner(surf, souris)
+        self.boutons.append(b)
+
+    def _page_photo(self, surf, l, h, souris):
+        """Une photo en grand : légende, boutons Supprimer et Retour."""
+        from . import album
+        photos = album.lister()
+        if not photos or not (0 <= self.photo_index < len(photos)):
+            self.vue = "album"
+            return self._page_album(surf, l, h, souris)
+        chemin = photos[self.photo_index]
+        texte(surf, album.libelle(chemin), (l // 2, int(h * 0.30)), 14, CYAN, ancre="c")
+        v = album.image(chemin, l - 40, h - 190)
+        if v is not None:
+            surf.blit(v, (l // 2 - v.get_width() // 2, int(h * 0.30) + 22))
+        self.boutons = [Bouton((l // 2 - 190, h - 76, 180, 40), t("supprimer"),
+                               lambda: (album.supprimer(chemin), setattr(self, "vue", "album")), 16),
+                        Bouton((l // 2 + 10, h - 76, 180, 40), t("retour"),
+                               lambda: setattr(self, "vue", "album"), 16)]
+        for b in self.boutons:
+            b.dessiner(surf, souris)
+
+    def _ouvrir_photo(self, i):
+        self.photo_index = i
+        self.vue = "photo"
 
     def _page_apropos(self, surf, l, h, souris):
         """Version, licences (pygame, DejaVu) et confidentialité."""
