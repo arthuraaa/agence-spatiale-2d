@@ -135,6 +135,78 @@ def test_jalon_noeud_execute():
     assert "noeud" in reglages.JALONS_FAITS
 
 
+def test_jalons_nouveaux():
+    """Drapeau planté, photo, poses lointaines, constellation et trois mondes."""
+    import jeu.sauvegarde as sauvegarde
+    import tempfile
+    from jeu import album
+    from jeu.menu import SceneMenu
+    import pygame
+
+    u = univers_()
+    # drapeau : au moins un drapeau planté quelque part
+    assert not any(j.ident == "drapeau" and j.test(u, u.actif) for j in jalons.JALONS)
+    u.drapeaux_sol.append({"corps": "Lune", "longitude": 0.5, "t": 0.0})
+    jalons.verifier(u)
+    assert "drapeau" in reglages.JALONS_FAITS
+    # photo : une photo dans l'album (dossier de sauvegarde redirigé)
+    tmp = tempfile.TemporaryDirectory()
+    sauvegarde.chemin_sauvegarde = lambda: os.path.join(tmp.name, "sauvegarde.json")
+    surf_photo = pygame.Surface((100, 80))
+    surf_photo.fill((10, 10, 40))
+    album.prendre(surf_photo, "pose", "Lune")
+    jalons.verifier(u)
+    assert "photo" in reglages.JALONS_FAITS
+    # poses lointaines : Io, Europe, Ganymède, Pluton
+    v = u.actif
+    for ident, corps in (("io", "Io"), ("europe", "Europe"),
+                         ("ganymede", "Ganymède"), ("pluton", "Pluton")):
+        reglages.JALONS_FAITS = [j for j in reglages.JALONS_FAITS if j != ident]
+        v.drapeaux.add("pose:" + corps)
+        jalons.verifier(u)
+        assert ident in reglages.JALONS_FAITS, "jalon " + ident + " non coché"
+    # constellation : trois satellites (sonde + panneaux) en orbite terrestre
+    reglages.JALONS_FAITS = [j for j in reglages.JALONS_FAITS if j != "constellation"]
+    for k in range(3):
+        s = construire("Sat%d" % k, ["sonde", "panneaux"], u.terre)
+        s.corps = u.terre
+        u.vaisseaux.append(s)
+        sur_orbite(u, s)
+    jalons.verifier(u)
+    assert "constellation" in reglages.JALONS_FAITS, "3 satellites : constellation attendue"
+    # trois_mondes : Mercure + Vénus + Mars visités par le même vaisseau
+    v.drapeaux |= {"soi:Mercure", "soi:Vénus", "soi:Mars"}
+    jalons.verifier(u)
+    assert "trois_mondes" in reglages.JALONS_FAITS
+
+
+def test_page_reussites_tient_dans_lecran():
+    """21 jalons sur 3 colonnes : page Réussites affichée en 4:3 et 20:9, boutons dans l'écran."""
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    import pygame
+    if not pygame.get_init():
+        pygame.init()
+    if pygame.display.get_surface() is None:
+        pygame.display.set_mode((200, 100))
+    from jeu.menu import SceneMenu
+
+    class App:
+        def quitter(self):
+            pass
+        def continuer(self):
+            pass
+        def nouvelle_partie(self, sable):
+            pass
+
+    for taille in ((720, 540), (1200, 540)):
+        sc = SceneMenu(App(), vue="reussites")
+        surf = pygame.Surface(taille).convert()
+        sc.dessiner(surf)
+        for b in sc.boutons:
+            assert b.rect.bottom <= taille[1] and b.rect.top >= 0, \
+                "bouton Réussites hors écran en %s : %s" % (taille, b.rect)
+
+
 def test_reglages_persiste_et_relit():
     """Jalons et stats survivent à un aller-retour reglages.json, avec valeurs sûres."""
     reglages.JALONS_FAITS = ["mercure", 7]

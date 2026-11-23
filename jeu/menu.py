@@ -151,7 +151,7 @@ class SceneMenu:
               (l // 2, y0), 13, CYAN, ancre="hc")
         # les jalons, sur deux colonnes, cochés quand ils sont obtenus
         y0 += 24
-        cols = 2 if l >= 640 else 1
+        cols = 3 if l >= 640 else 1               # 3 colonnes : 21 jalons tiennent dans 540 px
         lignes = (len(jalons.JALONS) + cols - 1) // cols
         lb = min(340, (l - 60) // cols - 8)
         x0 = (l - cols * lb - (cols - 1) * 12) // 2

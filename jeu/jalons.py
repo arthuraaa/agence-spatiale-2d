@@ -8,7 +8,8 @@ vérifiés au même endroit, deux fois par seconde (univers._periodique).
 """
 from math import hypot
 from .constantes import NOM_STATION, CYAN
-from .missions import _drapeau, _pose_sur_terre_avec
+from .missions import _drapeau, _pose_sur_terre_avec, _satellites
+from . import album
 from .textes import t
 from .vaisseau import Vaisseau
 from . import reglages
@@ -49,6 +50,17 @@ JALONS = [
     Jalon("venus", "jalon_venus_t", _drapeau("pose:Vénus")),
     Jalon("callisto", "jalon_callisto_t", _drapeau("pose:Callisto")),
     Jalon("retour_mars", "jalon_retour_mars_t", _pose_sur_terre_avec("pose:Mars")),
+    Jalon("drapeau", "jalon_drapeau_t", lambda u, v: bool(u.drapeaux_sol)),
+    Jalon("photo", "jalon_photo_t", lambda u, v: len(album.lister()) >= 1),
+    Jalon("io", "jalon_io_t", _drapeau("pose:Io")),
+    Jalon("europe", "jalon_europe_t", _drapeau("pose:Europe")),
+    Jalon("ganymede", "jalon_ganymede_t", _drapeau("pose:Ganymède")),
+    Jalon("pluton", "jalon_pluton_t", _drapeau("pose:Pluton")),
+    Jalon("constellation", "jalon_constellation_t",
+          lambda u, v: sum(1 for _ in _satellites(u)) >= 3),
+    Jalon("trois_mondes", "jalon_trois_mondes_t",
+          lambda u, v: v is not None and all("soi:" + n in v.drapeaux
+                                             for n in ("Mercure", "Vénus", "Mars"))),
 ]
 
 
