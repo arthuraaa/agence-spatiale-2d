@@ -26,6 +26,7 @@ def aide():
                          (t("T"), t("SAS marche / arrêt")),
                          (t("1 … 8"), t("SAS : stab, pro, rétro, rad+, rad-, cible, anti, manœuvre")),
                          (t("R  puis  I K J L"), t("RCS : translation (amarrage)")), (t("P"), t("parachute")),
+                         (t("B"), t("planter un drapeau (posé)")),
                          (t("U"), t("désamarrer")), (t("V"), t("référence de vitesse"))]),
         (t("MANŒUVRES"), [(t("A  ou  clic sur l'orbite"), t("poser un nœud de manœuvre")),
                           (t("Glisser une poignée"), t("régler le Δv (Maj : fin, Ctrl : rapide)")),
@@ -55,6 +56,7 @@ def aide_tactile():
         (t("COMMANDES"), [(t("Manette à gauche"), t("gaz : pose le doigt et glisse")),
                           (t("⟲  ⟳  (maintenir)"), t("tourner le vaisseau")),
                           (t("ÉTAGE"), t("larguer l'étage vide")),
+                          (t("Drapeau"), t("planter un drapeau (posé)")),
                           (t("Boutons du bas"), t("SAS : stab, pro, rétro, radial...")),
                           (t("RCS  puis  ▲ ▼ ◀ ▶"), t("translation fine (amarrage)")),
                           (t("◀  x1  ▶"), t("temps (tape au centre = x1)")),
@@ -498,6 +500,8 @@ class SceneVol:
             self.basculer_rcs()
         elif k == pygame.K_p:
             u.ouvrir_parachute()
+        elif k == pygame.K_b:
+            u.planter_drapeau()
         elif k == pygame.K_u:
             u.desamarrer()
         elif k == pygame.K_v:

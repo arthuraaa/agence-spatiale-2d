@@ -114,6 +114,9 @@ class Hud:
             if any(p.parachute == "plie" for p in a.pieces) and a.corps.atm_h > 0 and a.mode != "pose":
                 b.append(Bouton((x, y, 150, 28), t("Parachute (P)"), u.ouvrir_parachute))
                 y -= 32
+            if a.mode == "pose" and not a.corps.gazeux:
+                b.append(Bouton((x, y, 150, 28), t("Drapeau (B)"), u.planter_drapeau))
+                y -= 32
             if sc.cam.hors_vaisseau(u):
                 b.append(Bouton((x - 40, y, 190, 28), t("Revenir au vaisseau (F)"), sc.recentrer, 13))
                 y -= 32

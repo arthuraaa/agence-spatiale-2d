@@ -46,6 +46,7 @@ def univers_vers_dict(u):
         "actif": u.vaisseaux.index(u.actif) if u.actif in u.vaisseaux else -1,
         "cible": cible,
         "triche": dict(u.triche),
+        "drapeaux_sol": list(u.drapeaux_sol),
     }
 
 
@@ -56,6 +57,7 @@ def dict_vers_univers(d):
     u.fonds = d.get("fonds", u.fonds)
     u.missions_faites = set(d.get("missions", []))
     u.triche = dict(d.get("triche", {}))
+    u.drapeaux_sol = list(d.get("drapeaux_sol", []))
     sur_rails = []
     for dv in d["vaisseaux"]:
         pieces = [Piece.depuis_dict(x) for x in dv["pieces"]]

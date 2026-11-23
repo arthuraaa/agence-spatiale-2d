@@ -129,6 +129,8 @@ class HudTactile(Hud):
             contexte.append((t("Carburant"), lambda: sc.ouvrir("carburant")))
         if any(p.parachute == "plie" for p in a.pieces) and a.corps.atm_h > 0 and a.mode != "pose":
             contexte.append((t("Parachute"), u.ouvrir_parachute))
+        if a.mode == "pose" and not a.corps.gazeux:
+            contexte.append((t("Drapeau"), u.planter_drapeau))
         for lib, act in contexte:
             y -= 6 + 44
             b.append(Bouton((x0, y, L_COLONNE, 44), lib, act, 17))

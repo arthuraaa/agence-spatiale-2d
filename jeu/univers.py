@@ -16,6 +16,7 @@ from .constantes import (ACCELERATIONS, ACCEL_MAX_PHYSIQUE, PAS_PHYSIQUE, MIROIR
                          POSE_V_MAX_TRAIN, POSE_H_MAX, POSE_H_MAX_TRAIN, POSE_INCLINAISON, POSE_INCLINAISON_TRAIN,
                          AMARRAGE_DISTANCE, AMARRAGE_VITESSE, AMARRAGE_COS, PORTEE_PHYSIQUE,
                          FONDS_DEPART, TAUX_RECUPERATION, LONGITUDE_PAS_DE_TIR, NOM_STATION,
+                         PLAFOND_DRAPEAUX,
                          G0, BLANC, VERT, ROUGE, JAUNE, CYAN, ORANGE)
 from .orbite import Orbite, angle_pi
 from .corps import creer_systeme_solaire, Corps
@@ -63,6 +64,8 @@ class Univers:
         self.bruits = []                  # bruitages à jouer (l'écran de vol les consomme)
         self.tutoriel = None              # identifiant du tutoriel joué dans cet univers (jamais sauvegardé)
         self.effets = []                  # explosions
+        self.drapeaux_sol = []            # drapeaux plantés : [{"corps", "longitude", "t"}]
+        self.photos_demandees = []        # photos à prendre au prochain dessin (pose, amarrage)
         self.commandes = Commandes()
         self.instantane = None            # état sauvegardé juste avant le dernier lancement
         self.approche = None              # plus courte approche de la cible
@@ -443,6 +446,26 @@ class Univers:
             p.ouverture = 0.05
         self.dire(t("Parachute déployé"), VERT, 3)
         self.bruit("parachute")
+
+    def planter_drapeau(self):
+        """Plante un drapeau à l'endroit où le vaisseau actif est posé (il reste après le départ)."""
+        v = self.actif
+        if v is None:
+            return
+        if v.mode != "pose":
+            self.dire(t("Il faut être posé pour planter un drapeau"), ORANGE, 3)
+            return
+        c = v.corps
+        if c.gazeux:                         # géante gazeuse ou étoile : pas de surface
+            self.dire(t("{corps} n'a pas de surface où planter un drapeau", corps=t(c.nom)), ORANGE, 3)
+            return
+        if sum(1 for d in self.drapeaux_sol if d["corps"] == c.nom) >= PLAFOND_DRAPEAUX:
+            self.dire(t("Trop de drapeaux sur {corps}", corps=t(c.nom)), ORANGE, 3)
+            return
+        self.drapeaux_sol.append({"corps": c.nom, "longitude": v.longitude, "t": self.t})
+        v.drapeaux.add("drapeau:" + c.nom)   # copié aux séparations : il suit la capsule
+        self.dire(t("Drapeau planté sur {corps}", corps=t(c.nom)), VERT, 3)
+        self.bruit("pose")
 
     # ======================================================================
     # Nœud de manœuvre

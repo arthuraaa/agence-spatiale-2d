@@ -723,6 +723,34 @@ def _pas_de_tir(surf, u, cam):
         pygame.draw.circle(surf, (255, 70, 55), (int(tx), int(ty)), 4, 1)
 
 
+def _drapeaux_sol(surf, u, cam):
+    """Les drapeaux plantés (univers.drapeaux_sol) : un petit mât et un fanion rouge."""
+    if cam.zoom < 0.06 or not u.drapeaux_sol:
+        return
+    positions = {}                    # centre de chaque corps (la liste peut en répéter)
+    for d in u.drapeaux_sol:
+        c = u.par_nom.get(d["corps"])
+        if c is None:                 # corps inconnu (sauvegarde d'une autre version)
+            continue
+        if c not in positions:
+            positions[c] = u.position_corps(c)
+        bx, by = positions[c]
+        ang = d["longitude"] + c.angle_rotation(u.t)
+        r = c.R + c.relief(d["longitude"])
+        ox, oy = cam.vers_ecran(bx + r * cos(ang), by + r * sin(ang))
+        if not (-20 < ox < cam.l + 20 and -20 < oy < cam.h + 20):
+            continue
+        hx, hy = cam.direction_ecran(cos(ang), sin(ang))          # vers le haut
+        ex, ey = cam.direction_ecran(-sin(ang), cos(ang))         # vers l'est
+        z = cam.zoom
+
+        def P(e, h, ox=ox, oy=oy, hx=hx, hy=hy, ex=ex, ey=ey, z=z):
+            return ox + (ex * e + hx * h) * z, oy + (ey * e + hy * h) * z
+
+        pygame.draw.line(surf, (200, 204, 214), P(0, 0), P(0, 2.5))
+        pygame.draw.polygon(surf, (215, 40, 35), [P(0, 2.5), P(1.4, 2.15), P(0, 1.8)])
+
+
 def _anomalies_troncon(tr, t, n, dense):
     """Anomalies (E ou H) échantillonnées le long d'un tronçon, du présent vers la fin."""
     orb = tr.orbite
@@ -1014,6 +1042,7 @@ def dessiner_monde(surf, u, cam, temps_reel=0.0):
     for c in u.corps:
         _dessiner_corps(surf, u, cam, c, fond)
     _pas_de_tir(surf, u, cam)
+    _drapeaux_sol(surf, u, cam)
     a = u.actif
     cible = u.cible
     if cible is not None and not isinstance(cible, Corps) and cible.mode == "rails" and cible.troncons:

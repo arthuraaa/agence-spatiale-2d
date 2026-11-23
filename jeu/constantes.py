@@ -47,6 +47,7 @@ FONDS_DEPART = 25_000
 TAUX_RECUPERATION = 0.75          # part du prix remboursée quand on récupère un vaisseau
 LONGITUDE_PAS_DE_TIR = pi / 2     # position du pas de tir sur la Terre (rad)
 NOM_STATION = "Station Alpha"
+PLAFOND_DRAPEAUX = 20             # drapeaux plantés max par corps
 
 # --- Couleurs ---------------------------------------------------------------
 NOIR = (4, 6, 12)
