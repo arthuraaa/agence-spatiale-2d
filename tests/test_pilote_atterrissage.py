@@ -74,6 +74,51 @@ def test_atterrissage_automatique():
         assert v_vert < 15.0, "vitesse résiduelle faible après la pose"
 
 
+def test_refus_sans_surface_ni_moteur():
+    """Le pilote refuse proprement : géante gazeuse (pas de surface) et capsule sans
+    moteur (rien pour se poser). Il ne doit ni engloutir le vaisseau ni boucler."""
+    # Jupiter : le pilote s'arrête immédiatement, le vaisseau reste intact en orbite
+    u, v = atterrir("Jupiter", 0.5, ["capsule", "decoupleur", "reservoir_l",
+                                     "reservoir_l", "train", "mistral"])
+    assert not v.detruit and v.mode != "pose", "Jupiter : le vaisseau doit rester en orbite"
+    assert any("pas de surface" in m[0] for m in u.messages), \
+        "message « pas de surface » attendu, messages=%s" % [m[0] for m in u.messages][-3:]
+    # Lune : une capsule sans moteur ne peut pas se poser — message clair, pas de plantage
+    reglages.AIDES = True
+    u2 = Univers(bac_a_sable=True)
+    corps = next(c for c in u2.corps if c.nom == "Lune")
+    v2 = construire("Sélène", ["capsule", "reservoir_m", "train"], corps)
+    r = corps.R + 5000.0
+    v2.x, v2.y = r, 0.0
+    v2.vx, v2.vy = 0.0, -30.0                   # chute lente au-dessus du sol
+    v2.angle = -pi / 2
+    v2.mode = "physique"
+    u2.vaisseaux.append(v2)
+    u2.actif = v2
+    u2.lancer_pilote(pilote.Atterrissage())
+    for _ in range(60 * 120):
+        u2.avancer(DT)
+        if u2.pilote is None:
+            break
+    reglages.AIDES = False
+    assert u2.pilote is None, "le pilote doit s'arrêter (aucun moteur)"
+    assert any("aucun moteur" in m[0] for m in u2.messages), \
+        "message « aucun moteur » attendu, messages=%s" % [m[0] for m in u2.messages][-3:]
+
+
+def test_moteur_seul_sans_parachute():
+    """Rentrée Terre sans voile (pièce « sonde ») : le pilote doit se poser au moteur.
+    Sans planage (couper les gaz tant que la distance d'arrêt est confortable), le
+    freinage continu en plein ciel brûlait tout le carburant en pertes de gravité."""
+    u, v = atterrir("Terre", 2.2, ["sonde", "decoupleur", "reservoir_l", "reservoir_l",
+                                   "train", "mistral"])
+    assert v.mode == "pose" and not v.detruit, \
+        "moteur seul : %s %s %s" % (v.mode, v.detruit, [m[0] for m in u.messages][-3:])
+    assert sum(p.carburant for p in v.pieces) > 0.0, "carburant gaspillé en plein ciel"
+
+
 if __name__ == "__main__":
     test_atterrissage_automatique()
+    test_moteur_seul_sans_parachute()
+    test_refus_sans_surface_ni_moteur()
     print("--- pilote d'atterrissage : OK")

@@ -396,6 +396,10 @@ class Atterrissage(Programme):
         if v.mode == "pose":
             v.gaz = 0.0
             return False
+        if c.gazeux:                         # géante gazeuse ou étoile : pas de surface
+            u.dire(t("Pilote : {corps} n'a pas de surface où se poser", corps=t(c.nom)),
+                   (255, 150, 60), 5)
+            return False
         # les boosters brûlent à plein gaz dès qu'on met du gaz (impossible de les doser)
         # et leur flamme part en même temps que le parachute : on les largue tout de suite
         from .vaisseau import porteurs_actifs
@@ -436,7 +440,10 @@ class Atterrissage(Programme):
                     v.gaz = 0.0
                     return True
                 v.gaz = 0.0
-                u.dire(t("Pilote : plus de carburant pour se poser"), (255, 150, 60), 5)
+                if not v.moteurs():
+                    u.dire(t("Pilote : aucun moteur pour se poser"), (255, 150, 60), 5)
+                else:
+                    u.dire(t("Pilote : plus de carburant pour se poser"), (255, 150, 60), 5)
                 return False
         a_max = f / v.masse()
         g_sol = c.mu / (c.R * c.R)
@@ -476,19 +483,19 @@ class Atterrissage(Programme):
             # limite d'ouverture et que l'air peut encore nous y amener. Le jugement se
             # fait avec la densité ICI (vitesse terminale locale) : en arrivant trop haut
             # trop vite, l'air est trop ténu — inutile d'attendre, on freine au moteur.
+            # avec un parachute à bord : ne rien brûler tant que la vitesse dépasse la
+            # limite d'ouverture et que l'air peut encore nous y amener (vitesse terminale
+            # à la densité locale, ou au pire au sol : en descendant l'air se densifie et
+            # l'emportera — inutile de brûler tout le carburant haut dans le ciel)
+            attend_voile = air_finira = False
             if c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0:
-                # traînée d'un vaisseau aligné vertical, le vent de face (flux par la queue)
-                cd_a = v.cd_a(-1.0, 0.0)
-                # l'air gagne-t-il déjà ICI ? (vitesse terminale à la densité locale)
+                cd_a = v.cd_a(-1.0, 0.0)         # queue devant, le vent par la flamme
                 rho = c.densite(u.altitude(v))
                 attend_voile = (rho > 0.0 and sqrt(2.0 * v.masse() * g_sol
                                                    / (rho * cd_a)) <= 250.0)
-                # sinon, l'air finira-t-il au moins avant le sol ? (vitesse terminale au
-                # sol : en dessous de 250 m/s l'air l'emportera en se densifiant — inutile
-                # de brûler tout le carburant haut dans le ciel, le parachute s'ouvrira)
-                air_finira = sqrt(2.0 * v.masse() * g_sol / (c.rho0 * cd_a)) <= 250.0
-            else:
-                attend_voile, air_finira = False, False
+                # seuil 200 et non 250 : à la limite exacte, la voile ne s'ouvrirait
+                # qu'au ras du sol (vt atteinte asymptotiquement) — il faut de la marge
+                air_finira = sqrt(2.0 * v.masse() * g_sol / (c.rho0 * cd_a)) <= 200.0
             if attend_voile or air_finira:
                 reste = hauteur / max(1.0, -v_vert)
                 u.accel = min(_accel_pour(reste), 3)
@@ -507,9 +514,13 @@ class Atterrissage(Programme):
         u.accel = 0
         if v.parachute_ouvert():
             # sous voile : si l'air seul amène doucement au sol (vitesse d'arrivée sous 6 m/s),
-            # on coupe tout — le parachute finit la descente et on garde le carburant
+            # on coupe tout — le parachute finit la descente et on garde le carburant.
+            # Densité ACTUELLE (conservative) : en descendant, l'air ne peut que se
+            # densifier, donc la vitesse d'arrivée réelle ne peut que baisser — et sur
+            # un relief, l'air est plus ténu que ne le dit rho0 au niveau de la mer.
             v_arr = sqrt(2.0 * v.masse() * g_sol
-                         / (c.rho0 * (v.cd_a(-1.0, 0.0) + v.surface_parachutes())))
+                         / (c.densite(u.altitude(v))
+                            * (v.cd_a(-1.0, 0.0) + v.surface_parachutes())))
             if c.atm_h > 0.0 and v_arr <= 6.0:
                 v.gaz = 0.0
                 return True
@@ -517,6 +528,14 @@ class Atterrissage(Programme):
             v.gaz = 0.0                                  # déjà doux : on économise
             return True
         if hauteur > 12.0 or vitesse > 4.0:              # freinage : s'arrêter juste au-dessus du sol
+            # planer tant que la distance d'arrêt est confortable : freiner à demi en plein
+            # ciel fait planer le vaisseau des minutes entières et brûle tout le carburant
+            # en pertes de gravité. On coupe tout, et le tout-brûler reprendra quand la
+            # distance d'arrêt aura rattrapé 50 % de l'altitude restante.
+            # (jamais sous voile : là, le moteur sert d'abord à tuer la dérive horizontale)
+            if not v.parachute_ouvert() and hauteur > 400.0 and arret < 0.5 * hauteur:
+                v.gaz = 0.0
+                return True
             besoin = (vitesse * vitesse - 2.25) / (2.0 * max(hauteur - 4.0, 0.5)) + pesanteur
             v.gaz = max(0.0, min(1.0, besoin / a_max))
         else:                                            # derniers mètres : 1,5 m/s, bien droit

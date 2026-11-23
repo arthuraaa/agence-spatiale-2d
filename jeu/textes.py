@@ -626,6 +626,8 @@ TOUT = {
     "Retour : aucune trajectoire trouvée": {"fr": "Retour : aucune trajectoire trouvée", "en": "Return: no trajectory found"},
     "Retour vers {corps} planifié : périapside à {km:.1f} km ({dv:+.0f} m/s)": {"fr": "Retour vers {corps} planifié : périapside à {km:.1f} km ({dv:+.0f} m/s)", "en": "Return to {corps} planned: periapsis at {km:.1f} km ({dv:+.0f} m/s)"},
     "Pilote : plus de carburant pour se poser": {"fr": "Pilote : plus de carburant pour se poser", "en": "Autopilot: out of fuel to land"},
+    "Pilote : aucun moteur pour se poser": {"fr": "Pilote : aucun moteur pour se poser", "en": "Autopilot: no engine to land with"},
+    "Pilote : {corps} n'a pas de surface où se poser": {"fr": "Pilote : {corps} n'a pas de surface où se poser", "en": "Autopilot: {corps} has no surface to land on"},
     "Pilote : largage des boosters": {"fr": "Pilote : largage des boosters", "en": "Autopilot: dropping the boosters"},
     "Pilote : moteur trop faible pour se poser ici": {"fr": "Pilote : moteur trop faible pour se poser ici", "en": "Autopilot: engine too weak to land here"},
     "Pilote : on quitte {corps}, pas d'atterrissage ici": {"fr": "Pilote : on quitte {corps}, pas d'atterrissage ici", "en": "Autopilot: leaving {corps}, no landing here"},
