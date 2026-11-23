@@ -31,10 +31,10 @@ def _pose_sur_terre_avec(drapeau):
     return lambda u, v: _sur(v, "Terre") and v.mode == "pose" and drapeau in v.drapeaux
 
 
-def _satellites(u):
-    """Satellites = vaisseaux avec une sonde et des panneaux, en orbite stable autour de la Terre."""
+def _satellites(u, corps_nom="Terre"):
+    """Satellites = vaisseaux avec une sonde et des panneaux, en orbite stable autour de `corps_nom`."""
     for s in u.vaisseaux:
-        if s.mode == "rails" and s.corps.nom == "Terre" and s.compte("sonde") and s.compte("panneaux"):
+        if s.mode == "rails" and s.corps.nom == corps_nom and s.compte("sonde") and s.compte("panneaux"):
             o = s.orbite
             if o.elliptique and o.ra < s.corps.soi:
                 yield s
@@ -67,6 +67,12 @@ def _station_agrandie(u, v):
 def _grand_tour(u, v):
     return v is not None and all("soi:" + n in v.drapeaux
                                  for n in ("Jupiter", "Saturne", "Uranus", "Neptune"))
+
+
+def _station_lunaire(u, v):
+    """Un amarrage en orbite de la Lune : la station lunaire est née."""
+    return any(s.mode == "rails" and s.corps.nom == "Lune"
+               and any(d.startswith("amarre:") for d in s.drapeaux) for s in u.vaisseaux)
 
 
 MISSIONS = [
@@ -107,6 +113,22 @@ MISSIONS = [
             _drapeau("pose:Titan")),
     Mission("grand_tour", "Grand Tour", "Visiter Jupiter, Saturne, Uranus et Neptune avec un seul vaisseau.",
             300_000, _grand_tour),
+    Mission("station_lunaire", "Station lunaire", "Amarrez deux vaisseaux en orbite de la Lune.",
+            60_000, _station_lunaire),
+    Mission("echantillons", "Échantillons lunaires",
+            "Revenir sur Terre avec un drapeau planté sur la Lune (touche B en étant posé).",
+            60_000, lambda u, v: v is not None and _sur(v, "Terre") and v.mode == "pose"
+            and "pose:Lune" in v.drapeaux and "drapeau:Lune" in v.drapeaux),
+    Mission("satellite_mars", "Satellite martien",
+            "Mettre une sonde + panneaux solaires en orbite martienne.", 80_000,
+            lambda u, v: any(s.orbite.rp - s.corps.R > 30_000 for s in _satellites(u, "Mars"))),
+    Mission("io_europe", "Les deux jupitériennes",
+            "Visiter Io et Europe avec le même vaisseau.", 100_000,
+            lambda u, v: v is not None and "soi:Io" in v.drapeaux and "soi:Europe" in v.drapeaux),
+    Mission("venus_sol", "Au sol de Vénus", "Se poser sur Vénus (l'atmosphère est dense).",
+            100_000, _drapeau("pose:Vénus")),
+    Mission("europe_sol", "Au sol d'Europe", "Se poser sur Europe, la lune glacée de Jupiter.",
+            120_000, _drapeau("pose:Europe")),
 ]
 
 
