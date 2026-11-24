@@ -313,7 +313,27 @@ class Vaisseau:
 
     # ------------------------------------------------------------ géométrie
     def geometrie(self):
-        """Positions des pièces le long de l'axe, par rapport au centre de masse (haut = +)."""
+        """Positions des pièces le long de l'axe, par rapport au centre de masse (haut = +).
+        Mis en cache (la géométrie ne change qu'en changeant les pièces ou leur contenu) :
+        appelée des dizaines de fois par image (rendu, HUD, pilote, univers) pour chaque
+        vaisseau visible — au dézoom, quand tout est à l'écran, c'était le premier poste
+        de CPU, et il se paye cash sur le téléphone."""
+        # empreinte : identité de chaque pièce (le nez d'une pile peut changer de contenu)
+        # et son contenu (carburant, mono) — les boosters latéraux comptent dans la masse
+        cle = []
+        for p in self.pieces:
+            cle.append((id(p), p.carburant, p.mono))
+            for q in p.laterales:
+                cle.append((id(q), q.carburant, q.mono))
+        cle = tuple(cle)
+        cache = getattr(self, "_geo", None)
+        if cache is not None and cache[0] == cle:
+            return cache[1]
+        g = self._calculer_geometrie()
+        self._geo = (cle, g)
+        return g
+
+    def _calculer_geometrie(self):
         pieces = self.pieces
         n = len(pieces)
         largeurs = [p.m.l for p in pieces]
