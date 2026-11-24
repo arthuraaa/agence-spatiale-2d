@@ -647,7 +647,8 @@ class Atterrissage(Programme):
         # dès que c'est permis, et le moteur garde son carburant pour se poser en douceur
         if (c.atm_h > 0.0 and vitesse <= 250.0 and u.altitude(v) < c.atm_h
                 and v.parachutes() and not v.parachute_ouvert()):
-            u.ouvrir_parachute()
+            v.gaz = 0.0          # la voile se déploie moteurs coupés : jamais ouvrir
+            u.ouvrir_parachute() # le parachute dans la flamme du freinage
             v.sas = "stab"      # la voile redresse le vaisseau (le RÉTRO l'alignait sur
                                 # sa dérive — presque horizontale au bigoudi — et on se
                                 # posait penché : « posé de travers »)
@@ -1019,6 +1020,12 @@ class Atterrissage(Programme):
                          / (c.densite(u.altitude(v))
                             * (v.cd_a(-1.0, 0.0) + v.surface_parachutes())))
             if c.atm_h > 0.0 and v_arr <= 6.0:
+                v.gaz = 0.0
+                return True
+            if hauteur > 300.0:
+                # voile ouverte en haute altitude : c'est elle qui freine, le moteur
+                # ne fume pas sous la voile — l'aide ne rallume que sous 300 m
+                # (comme la porte d'entrée en freinage « parachute ouvert »)
                 v.gaz = 0.0
                 return True
         if vitesse <= 6.0:
