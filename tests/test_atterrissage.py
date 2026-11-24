@@ -196,9 +196,11 @@ def test_retour_avec_train_accepte():
 
 def test_attente_dans_le_vide():
     """Entrée rasante au-dessus de l'atmosphère, trop vite pour ouvrir la voile
-    (250 m/s) et moteur plus faible que la gravité : le pilote doit PATIENTER,
-    gas et carburant intacts, tant que l'air seul peut amener la voile à sa vitesse
-    d'ouverture (il mettait plein gaz dans le vide et vidait tout le réservoir)."""
+    (250 m/s) et moteur plus faible que la gravité : l'air n'amènerait la voile à
+    sa vitesse d'ouverture qu'au ras du relief (le verdict le refuse désormais) —
+    le pilote doit RAIDIR la rentrée (désorbitation raide, freinage borné dans le
+    vide) et se poser. Il ne fallait ni fondre passivement jusqu'à l'écrasement,
+    ni brûler sans fin hors désorbitation (ancien bug : plein gaz dans le vide)."""
     app = jeu_main.Application(tactile=True)
     reglages.AIDES = True
     app.nouvelle_partie(True)
@@ -220,19 +222,19 @@ def test_attente_dans_le_vide():
     v.cache_etat = (None, None)
     u._predire(v)
     u.lancer_pilote(pilote.Atterrissage())
-    carb0 = sum(p.carburant for p in v.pieces)
-    entre = False
-    for k in range(60 * 300):
+    brule_vide = False
+    for k in range(60 * 1200):
         u.avancer(DT)
-        if u.altitude(v) < c.atm_h:                     # dans l'air : le freinage y est jugé
-            entre = True
+        if u.pilote is None:
             break
-        assert v.gaz == 0.0, "gaz à %.2f au-dessus de l'atmosphère, à %.0f m/s" % (
-            v.gaz, hypot(*u.etat(v)[2:]))
         assert v.detruit is False
-    assert entre, "jamais entré dans l'atmosphère"
-    assert sum(p.carburant for p in v.pieces) == carb0, "carburant brûlé dans le vide"
-    print("   traversée du vide à plus de 250 m/s : aucun gaz, %.0f kg intacts" % carb0)
+        if u.altitude(v) > c.atm_h and getattr(u.pilote, "phase", "?") == "chute" \
+                and v.gaz > 0.0:
+            brule_vide = True            # le frein « brute » ne brûle que dans l'air
+    assert not brule_vide, "gaz en phase « chute » au-dessus de l'atmosphère"
+    print("   rentrée raidie puis posée :", [m[0] for m in u.messages[-1:]])
+    assert v.mode == "pose" and not v.detruit, [m[0] for m in u.messages[-2:]]
+    assert not any("moteur trop faible" in m[0] for m in u.messages)
 
 
 def test_desorbite_haut_dans_le_ciel():
@@ -269,16 +271,24 @@ def test_desorbite_haut_dans_le_ciel():
     print("   apoapside à %.0f km, rp à %.0f km d'altitude" % ((o.ra - c.R) / 1e3, (o.rp - c.R) / 1e3))
     assert o.elliptique and 0.0 < o.rp - c.R < c.atm_h + 60_000.0
     u.lancer_pilote(pilote.Atterrissage())
+    rp_min = v.orbite.rp
     for _ in range(60 * 120):                        # deux minutes : il n'en faut pas plus
         u.avancer(DT)
         if u.pilote is None or v.mode == "pose" or v.detruit:
             break
+        if v.orbite is not None:
+            rp_min = min(rp_min, v.orbite.rp)
     o = v.orbite
     carb = sum(p.carburant for p in v.pieces)
-    print("   après 2 min : carburant %.0f kg, orbite %s" % (
-        carb, "échappée" if not o.elliptique else "rp à %.0f km" % ((o.rp - c.R) / 1e3)))
+    print("   après 2 min : carburant %.0f kg, rp mini à %.0f km d'altitude, orbite %s" % (
+        carb, (rp_min - c.R) / 1e3,
+        "échappée" if not o.elliptique else "rp à %.0f km" % ((o.rp - c.R) / 1e3)))
     assert o.elliptique, "l'orbite s'est échappée : la poussée allait dans le mauvais sens"
-    assert o.rp < c.R, "le rp n'a pas baissé : le pilote n'a jamais désorbité (test vide)"
+    # le pilote a bien désorbité (rp passé SOUS la surface) : la désorbitation se fait
+    # par rapport à l'orbite. Depuis cette apoapside de 4 200 km, la rentrée est ensuite
+    # jugée condamnée et le pilote remonte le périapside (abandon honnête) — le rp
+    # final peut donc être remonté, seul le rp MINI prouve la mise à feu.
+    assert rp_min < c.R, "le rp n'a pas baissé : le pilote n'a jamais désorbité (test vide)"
     assert carb > 1800.0, "désorbitation de %.0f m/s : %.0f kg brûlés pour rien" % (
         2000.0 - carb, 2000.0 - carb)
 

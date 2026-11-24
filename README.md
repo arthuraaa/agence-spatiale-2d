@@ -322,7 +322,12 @@ Le bouton **Pilote** (touche `G` sur PC) propose ce qui est utile sur le moment 
 - **Circulariser** : pose un nœud à la prochaine apoapside (ou au périapside en arrivant
   sur une planète : c'est la capture).
 - **Atterrissage automatique** : désorbitation si besoin, chute en temps accéléré, freinage
-  au dernier moment, puis descente verticale douce jusqu'au contact.
+  au dernier moment, puis descente verticale douce jusqu'au contact. Avant de foncer, il
+  juge la rentrée (parachute à temps ? le moteur peut-il arrêter la chute ?) : si c'est
+  impossible, il refuse (« moteur trop faible ») ou remonte le périapside et rend la main
+  (« rentrée annulée ») — jamais de vaisseau sacrifié. Et si ses calculs disent non alors
+  que le vrai vol réussit (étages largués en route, masse qui diminue en brûlant), il joue
+  la descente en vol d'essai dans une copie de la simulation : si l'essai se pose, il fonce.
 - **Transfert vers…** (avec une lune ou une planète en cible) : pose le nœud de départ.
   Vers une planète, il attend la fenêtre de tir et l'annonce (« fenêtre dans 1,6 j »).
 - **Rendez-vous et amarrage** (avec un vaisseau en cible, par exemple la station) : calcule

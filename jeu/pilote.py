@@ -385,7 +385,7 @@ def _transfert_planete(u, v, o, planete, cible):
 
 
 def simule_rentree(corps, x, y, vx, vy, masse, cd_a, a_moteur=0.0, dv_moteur=0.0,
-                   limite=250.0, s_voile=0.0, contact_max=250.0):
+                   limite=250.0, s_voile=0.0, contact_max=250.0, t0=0.0, info=None):
     """Verdict d'une rentrée : depuis cet état, le vaisseau peut-il se POSER ?
     Intégration grossière : la gravité partout, l'air sous le plafond (freiné par
     rapport au sol), le moteur en rétro tant qu'on dépasse la limite d'ouverture de
@@ -394,23 +394,47 @@ def simule_rentree(corps, x, y, vx, vy, masse, cd_a, a_moteur=0.0, dv_moteur=0.0
     la vitesse le permet, avec sa montée en puissance de 3 s ; le verdict alors exige
     un contact sous contact_max (la limite de POSE, pas « juste pas brûlé » : sur une
     rentrée raide, la voile ne s'ouvrait qu'à 30 m du sol — trop tard pour rien).
-    C'est un verdict, pas une prédiction : le relief n'y figure pas (contact jugé
-    au niveau 0 de la surface)."""
+    C'est un verdict, pas une prédiction : le contact est jugé au niveau 0 de la
+    surface. Le relief du lieu de rentrée, lui, compte pour l'ouverture de la
+    voile : si l'air n'amène la vitesse à la limite d'ouverture qu'au ras des
+    collines (rentrée rasante), la voile ouvre trop tard — verdict refusé, et le
+    pilote raidira la rentrée ou renoncera au lieu d'écraser le vaisseau."""
     w = corps.vitesse_rotation
     dt = 2.0
     ouv = 0.0
+    t = 0.0
+    alt_ouv = None                                  # altitude d'ouverture de la voile
+    t_ouv = None                                    # instant (pour le relief du lieu)
     for _ in range(1000000):
+        t += dt
         r = hypot(x, y)
         alt = r - corps.R
         vrx, vry = vx + w * y, vy - w * x        # vitesse par rapport au sol
         vrel = hypot(vrx, vry)
-        if alt <= 0.0:
-            return vrel <= contact_max           # au sol (niveau 0) : posable ou écrasé
+        # le terrain SOUS le vaisseau (longitude liée au sol) : on se pose sur le
+        # relief, pas au niveau 0 de la mer — juger le contact à R + 0 fait tomber
+        # le verdict des centaines de mètres plus bas que la vraie pose (davantage
+        # de chute, frein plus long côté verdict) et refusait des poses réussies.
+        sol = corps.relief(atan2(y, x) - corps.angle_rotation(t0 + t))
+        haut = alt - sol                         # hauteur au-dessus du TERRAIN
+        if alt <= sol:
+            if info is not None:
+                info["alt_ouv"] = alt_ouv           # None si la voile n'a jamais ouvert
+                info["v_contact"] = vrel
+            if s_voile > 0.0 and alt_ouv is not None:
+                # relief du lieu de rentrée (longitude où la voile devait s'ouvrir) :
+                # une ouverture au ras des collines arrive trop tard pour rien
+                lon_ouv = atan2(y, x) - corps.angle_rotation(t0 + t_ouv)
+                if alt_ouv <= corps.relief(lon_ouv) + 60.0:
+                    return False
+            return vrel <= contact_max           # au sol : posable ou écrasé
             # (et non à +300 m : sur une entrée raide, l'air ne devient assez dense
             # pour la limite de pose que dans les derniers 300 m — s'arrêter plus tôt
             # refusait des vaisseaux que la voile pose pourtant tout en douceur)
         if alt <= corps.atm_h:
             if s_voile > 0.0 and vrel <= limite:
+                if ouv == 0.0:                   # la voile commence à s'ouvrir ici :
+                    alt_ouv, t_ouv = alt, t      # assez haut au-dessus du relief ?
                 ouv = min(1.0, ouv + dt / 3.0)   # la voile se gonfle en 3 s (univers)
             cda = cd_a + s_voile * ouv * ouv
             k = 0.5 * corps.densite(alt) * cda * vrel / masse
@@ -419,31 +443,100 @@ def simule_rentree(corps, x, y, vx, vy, masse, cd_a, a_moteur=0.0, dv_moteur=0.0
         g = corps.mu / (r * r)
         vx -= g * x / r * dt
         vy -= g * y / r * dt
-        # le moteur freine la vitesse INERTIELLE : haut dans le ciel, la vitesse « par
-        # rapport au sol » (w·r) ne veut plus rien dire et tourne à 3 km/s pour rien.
-        # Et comme le pilote (brute_voile), il freine au BON moment : trop tôt, la
-        # gravité referait ce qu'il enlève. Dans le vide, on attend que la distance
-        # d'arrêt (comptée avec la même formule que le pilote) approche de
-        # l'atmosphère, deux fois par sécurité ; dans l'air, la traînée s'ajoute au
-        # moteur, on brûle sans relâche.
         dans_air = alt <= corps.atm_h
-        vin = hypot(vx, vy)
-        arret = (vin * vin - limite * limite) / (2.0 * max(1.0, a_moteur))
-        if a_moteur > 0.0 and dv_moteur > 0.0 \
-                and (vrel if dans_air else vin) > limite \
-                and (dans_air or alt - corps.atm_h < 2.0 * arret):
-            dv = min(a_moteur * dt, dv_moteur)   # le moteur n'a pas de carburant infini
-            k = dv / vin
+        # le frein « moteur » n'attend la vitesse d'ouverture de la voile que s'il y a
+        # une voile : en plein vide (Lune), la chute depuis l'orbite reste sous 250 m/s
+        # et le moteur n'aurait jamais freiné — verdict faux, pose refusée à tort.
+        seuil = limite if (dans_air and s_voile > 0.0) else 0.0
+        # le frein du verdict IMITE le vrai contrôleur, ce n'est pas un suicide-burn
+        # idéal : entrée en freinage à 1,25·arret + 40 (arret : distance d'arrêt à
+        # 0,85 de la poussée, gravité déduite — la formule même de la phase « chute »
+        # du pilote), puis brûlage sans relâche vers l'arrêt AU SOL (rétro surface ;
+        # viser le zéro inertiel laissait au contact la vitesse de rotation du corps,
+        # 47 m/s sur Terre). Un verdict « optimal » (frein le plus tard possible,
+        # profil v² = 2·(a−g)·h) désaccordait verdict et vol : le lander à forte
+        # dérive horizontale ne se posait QUE grâce au freinage précoce (tuer la
+        # dérive prend du temps) — le frein tardif le faisait s'écraser à 108 m/s de
+        # dérive, verdict vrai mais vol faux. Sous voile ouverte et bas, le moteur
+        # n'est qu'une aide (comme la phase freinage sous parachute, sous 300 m).
+        peut = 0.85 * a_moteur - g > 0.0
+        arret = (vrel * vrel - seuil * seuil) \
+            / (2.0 * max(0.1, 0.85 * a_moteur - g))
+        # l'aide moteur sous voile (moins de 300 m du sol, comme le vrai freinage
+        # « parachute ouvert ») ne doit PAS passer par le seuil d'ouverture : une
+        # fois la voile ouverte on est sous 250 m/s et la porte vrel > seuil serait
+        # toujours fermée — l'aide ne s'allumait jamais (contact à la vitesse
+        # terminale de la voile, 14,3 m/s, pour un posé que le flux réussit).
+        aide_voile = s_voile > 0.0 and ouv > 0.0 and haut < 300.0
+        if a_moteur > 0.0 and dv_moteur > 0.0 and (
+                (peut and vrel > seuil and haut < 1.25 * arret + 40.0)
+                or aide_voile):
+            dv = min(a_moteur * dt, dv_moteur, vrel)  # ni de carburant infini,
+            k = dv / vrel                             # ni de frein au-delà de l'arrêt
             dv_moteur -= dv
-            vx -= k * vx
-            vy -= k * vy
+            vx -= k * vrx
+            vy -= k * vry
         x += vx * dt
         y += vy * dt
         # pas large dans le vide, plus fin à l'approche de la planète (le verdict se
-        # joue sur la chute près d'elle et la traversée de la couche dense)
-        dt = 2.0 if alt > 200.0 * corps.atm_h else (0.5 if alt > corps.atm_h else 0.05)
+        # joue sur la chute près d'elle et la traversée de la couche dense). Sans
+        # atmosphère (Lune, Mercure), l'échelle de raffinement est l'atmosphère qui
+        # n'existe pas : on prend une fraction du rayon, sinon dt restait à 2 s
+        # jusqu'au contact et le freinage final était jugé de travers.
+        ref = corps.atm_h if corps.atm_h > 0.0 else max(2000.0, 0.02 * corps.R)
+        dt = 2.0 if alt > 200.0 * ref else (0.5 if alt > ref else 0.05)
         if r > 200.0 * corps.R:
             return False                         # reparti dans l'espace : rien à freiner
+    return False
+
+
+def essai_pose(u, v, programme, limite_pas=60 * 1200, depart=None):
+    """Joue en OMBRE le reste de la descente : cloner le vaisseau dans un Univers
+    bac à sable, y poursuivre le même programme, et renvoyer True si le clone SE POSE
+    (sans être détruit ni abandonner, dans le délai). Verdict EXACT : le vol d'essai
+    utilise le vrai contrôleur (freinage, largage d'étage, parachute), donc verdict
+    et vol ne peuvent plus se contredire — les modèles approchés de simule_rentree
+    désaccordaient (étages en série, réservoirs qui se vident : un lander était
+    abandonné pour une pose que le vrai vol réussit à 6,1 m/s). Avec `depart`, l'ombre
+    part d'une phase donnée (phase None : « desorbite », ou « chute » en entrée
+    directe) au lieu de la phase du programme."""
+    from .univers import Univers
+    from .vaisseau import construire
+    from .orbite import Orbite
+    essai_u = Univers(bac_a_sable=True)
+    essai_u.t = u.t                          # même instant (angle_rotation du corps)
+    c = v.corps
+    ev = construire(v.nom, [p.m.cle for p in v.pieces], c)
+    for piece, modele in zip(ev.pieces, v.pieces):
+        piece.carburant = modele.carburant   # même carburant restant
+    ev.corps = c
+    x, y, vx, vy = u.etat(v)
+    ev.x, ev.y, ev.vx, ev.vy = x, y, vx, vy
+    ev.angle, ev.omega, ev.gaz = v.angle, v.omega, 0.0
+    ev.mode = v.mode
+    ev.orbite = Orbite(x, y, vx, vy, c.mu, essai_u.t)
+    ev.troncons = []
+    ev.cache_etat = (None, None)
+    essai_u.vaisseaux.append(ev)
+    essai_u.actif = ev
+    essai_u._predire(ev)
+    prg = Atterrissage()
+    for cle in ("phase", "monter", "capture_faite", "etager_dabord", "abandon",
+                "voile_a_temps", "air_seul_ok", "brute_voile", "verdict_posable",
+                "verdict_moteur"):
+        setattr(prg, cle, getattr(programme, cle, None))
+    if depart is not None:
+        prg.phase = depart
+    prg.en_ombre = True
+    essai_u.pilote = prg                     # pas lancer_pilote : pas de message public
+    for _ in range(limite_pas):
+        essai_u.avancer(1.0 / 30.0)
+        if ev.detruit:
+            return False
+        if ev.mode == "pose":
+            return True
+        if essai_u.pilote is None:
+            return False                     # le programme a renoncé : pas une pose
     return False
 
 
@@ -485,15 +578,53 @@ class Atterrissage(Programme):
     def __init__(self):
         self.phase = None
         self.brute_voile = False                 # l'air seul n'amènera pas la voile à 250 m/s
+        self.air_seul_ok = False                 # verdict : l'air seul amène la voile à temps
+        self.voile_a_temps = False               # la voile s'ouvre à temps au-dessus du relief
+        self.abandon = False                     # rentrée condamnée : on remonte et on rend la main
         self.verdict_posable = False             # la rentrée amène la voile à 250 m/s (verdict)
+        self.verdict_moteur = False              # idem sans voile : le moteur peut finir la pose
         self.capture_faite = False               # la désorbitation après capture aéro
+        self.en_ombre = False                    # vol d'essai (essai_pose) : jamais d'abandon
         self.monter = None                       # sens de la désorbitation (fixé à l'entrée)
+        self.etager_dabord = False               # verdict raté, mais la config après étage passe
+
+    def etage_apres_posable(self, v, c, etat_cible, t0):
+        """Ce qui restera APRÈS le prochain étage (au-dessus du découpleur du bas)
+        peut-il se poser ? (verdict identique à celui de la config courante)."""
+        from .vaisseau import Vaisseau, indice_decoupleur_bas
+        from .constantes import POSE_V_MAX, POSE_V_MAX_TRAIN
+        i = indice_decoupleur_bas(v.pieces)
+        if i is None or i <= 0:
+            return False
+        essai = Vaisseau("essai", v.pieces[:i], c)
+        if not essai.moteurs() and not essai.parachutes():
+            return False                          # rien d'utilisable au-dessus du découpleur
+        v_pose = POSE_V_MAX_TRAIN if essai.a_un_train() else POSE_V_MAX
+        ex, ey, evx, evy = etat_cible
+        m, cda = essai.masse(), essai.cd_a(-1.0, 0.0)
+        if c.atm_h > 0.0 and essai.parachutes():
+            s_voile = 700.0 * len(essai.parachutes())
+            if simule_rentree(c, ex, ey, evx, evy, m, cda, s_voile=s_voile,
+                              contact_max=v_pose, t0=t0):
+                return True
+            a_essai = poussee_max(essai) / m
+            return bool(simule_rentree(c, ex, ey, evx, evy, m, cda,
+                                       0.85 * a_essai, 0.9 * essai.delta_v(),
+                                       s_voile=s_voile, contact_max=v_pose, t0=t0))
+        a_essai = poussee_max(essai) / m if essai.moteurs() else 0.0
+        return bool(simule_rentree(c, ex, ey, evx, evy, m, cda,
+                                   0.85 * a_essai, 0.9 * essai.delta_v(),
+                                   contact_max=v_pose, t0=t0))
 
     def piloter(self, u, v):
         c = v.corps
         if v.mode == "pose":
             v.gaz = 0.0
             return False
+        if self.etager_dabord:               # l'étage du bas ne servait qu'à alourdir
+            self.etager_dabord = False
+            u.separer_etage()
+            return True
         if c.gazeux:                         # géante gazeuse ou étoile : pas de surface
             u.dire(t("Pilote : {corps} n'a pas de surface où se poser", corps=t(c.nom)),
                    (255, 150, 60), 5)
@@ -517,6 +648,9 @@ class Atterrissage(Programme):
         if (c.atm_h > 0.0 and vitesse <= 250.0 and u.altitude(v) < c.atm_h
                 and v.parachutes() and not v.parachute_ouvert()):
             u.ouvrir_parachute()
+            v.sas = "stab"      # la voile redresse le vaisseau (le RÉTRO l'alignait sur
+                                # sa dérive — presque horizontale au bigoudi — et on se
+                                # posait penché : « posé de travers »)
         f = poussee_max(v)
         if f <= 0.0:
             # plus de poussée : l'étage courant est vide, on essaie de passer au suivant
@@ -547,6 +681,13 @@ class Atterrissage(Programme):
         a_max = f / v.masse()
         g_sol = c.mu / (c.R * c.R)
         if self.phase is None:
+            # sans trajectoire prédite, le verdict est impossible : juste après la mise en
+            # orbite (coast en physique, gaz coupé), on attend une image — le retour sur
+            # rails apportera les tronçons. Sinon on jugeait une orbite quasi circulaire
+            # comme une « chute directe » (v.verticale légèrement négative) et on refusait
+            # des fusées dont l'étage se pose pourtant très bien.
+            if not v.troncons and v.mode == "physique" and u.altitude(v) >= c.atm_h:
+                return True
             # le parachute peut-il finir la descente tout seul ? (vitesse d'arrivée au sol
             # sous grande voile, moteur coupé) — sinon il faut un vrai moteur avec de la marge.
             # La limite est celle de la pose : plus généreuse avec un train (14 m/s au lieu
@@ -558,25 +699,40 @@ class Atterrissage(Programme):
             # percutait le relief à 450 m/s après avoir accepté de se « poser »)
             tombe = v_vert < 0.0 and hauteur < 0.3 * c.R
             tr = v.troncons[0] if v.troncons else None
-            # sans air, une trajectoire qui touche est une chute directe ; avec de l'air,
-            # on la corrige plutôt : remonter (ou baisser) le périapside au niveau rasant,
-            # pour que l'atmosphère freine en plusieurs passes au lieu de tout casser
-            chute_directe = tombe or (tr is not None and tr.fin in ("impact", "atmo")
-                                      and c.atm_h <= 0.0)
+            # une trajectoire qui touche est une chute directe ; avec de l'air et un
+            # périapside sous le sol, on la corrige plutôt : remonter le périapside au
+            # niveau rasant, pour que l'atmosphère freine en plusieurs passes. Sans
+            # prédiction (rentrée déjà engagée, mode physique), on se fie au mouvement :
+            # v.verticale négative bas dans le ciel = on tombe déjà. (Sur une orbite
+            # fermée, v.verticale est négative la moitié du temps : ne JAMAIS s'y fier
+            # quand les tronçons existent — on refusait ou on « chutait » sans descendre.)
+            plonge = tr is not None and tr.fin in ("impact", "atmo")
+            chute_directe = ((plonge and (c.atm_h <= 0.0 or tr.fin == "atmo"))
+                             or (tr is None and tombe))
+            # état que le verdict doit juger : tel quel si la trajectoire plonge déjà,
+            # sinon après la désorbitation à venir (même cible que la désorbitation
+            # réelle : raide en descente, rasant si le périapside est sous le rasant)
+            if chute_directe:
+                ex, ey, evx, evy = x, y, vx, vy
+            else:
+                rp_vise = rp_cible_desorbite(c, monter=bool(
+                    v.orbite is not None and v.orbite.elliptique
+                    and v.orbite.rp < rp_cible_desorbite(c, True)))
+                ex, ey, evx, evy = etat_apres_desorbitation(c, r, rp_vise)
             if c.atm_h > 0.0 and bool(v.parachutes()):
-                if chute_directe:                # la trajectoire plonge déjà : la juger telle
-                    ex, ey, evx, evy = x, y, vx, vy
-                else:                            # sinon, après la désorbitation à venir
-                    # même cible que la désorbitation réelle : raide en descente,
-                    # rasant si le périapside est déjà sous le rasant (retour plongeant)
-                    rp_vise = rp_cible_desorbite(c, monter=bool(
-                        v.orbite is not None and v.orbite.elliptique
-                        and v.orbite.rp < rp_cible_desorbite(c, True)))
-                    ex, ey, evx, evy = etat_apres_desorbitation(c, r, rp_vise)
                 cda, masse = v.cd_a(-1.0, 0.0), v.masse()
                 s_voile = 700.0 * len(v.parachutes())
+                info = {}
                 air_seul = simule_rentree(c, ex, ey, evx, evy, masse, cda,
-                                          s_voile=s_voile, contact_max=v_pose)
+                                          s_voile=s_voile, contact_max=v_pose, t0=u.t,
+                                          info=info)
+                self.air_seul_ok = bool(air_seul)
+                # en chute directe, l'état jugé est l'état RÉEL (déjà engagé) :
+                # « la voile ouvre à temps » y est donc fiable dès maintenant (en
+                # desorbitation classique, il sera rejugé à la fin de la mise à feu)
+                if chute_directe:
+                    self.voile_a_temps = bool(air_seul
+                                              and info.get("alt_ouv") is not None)
                 # la rentrée amène-t-elle à une vraie POSE (voile ouverte à temps et
                 # contact doux), avec ou sans l'aide du moteur ? Mémorisé : la
                 # transition desorbite→chute s'en servira (l'état réel a pu changer,
@@ -585,17 +741,70 @@ class Atterrissage(Programme):
                                             or simule_rentree(c, ex, ey, evx, evy, masse, cda,
                                                               0.85 * a_max, 0.9 * v.delta_v(),
                                                               s_voile=s_voile,
-                                                              contact_max=v_pose))
+                                                              contact_max=v_pose, t0=u.t))
                 voile_capable = (sqrt(2.0 * masse * g_sol / (c.rho0 * 700.0)) < v_pose
                                  and self.verdict_posable)
             else:
                 voile_capable = False
                 air_seul = False
                 self.verdict_posable = False
-            # sinon il faut un vrai moteur : jugé avec la gravité de la surface (c'est là
-            # qu'on se pose) — il faut de quoi freiner ET tenir face à la gravité avec de
-            # la marge (0,85*a - g ≥ 0,15*g) ; en dessous, freinage imbordable : on refuse.
-            if 0.85 * a_max - g_sol < 0.15 * g_sol and not voile_capable:
+                # sans voile possible : « tenir face à la gravité » (0,85*a - g) ne suffit
+                # pas — il faut de quoi VRAIMENT s'arrêter avant le sol. Sinon on acceptait
+                # des rentrées impossibles (Spoutnik freinait à 645 m/s depuis 13 km :
+                # il planait en brûlant tout son carburant, puis tapait le sol à 54 m/s).
+                self.verdict_moteur = bool(simule_rentree(
+                    c, ex, ey, evx, evy, v.masse(), v.cd_a(-1.0, 0.0),
+                    0.85 * a_max, 0.9 * v.delta_v(), contact_max=v_pose, t0=u.t))
+            # accepté ? avec une voile : tenir face à la gravité OU verdict de la rentrée ;
+            # sans voile : le verdict du moteur seul fait foi — sauf s'il dit non : le
+            # verdict imite le contrôleur avec une MASSE FIXE, alors que le vrai vol
+            # largue ses étages et brûle à masse décroissante (un moteur-seul était
+            # refusé, puis se posait à 6,2 m/s). Dernier mot au vol d'ombre : si le VRAI
+            # contrôleur, joué jusqu'au bout depuis ici, se pose, on fonce.
+            if not (c.atm_h > 0.0 and bool(v.parachutes())):
+                posable = self.verdict_moteur or essai_pose(
+                    u, v, self, depart="chute" if chute_directe else "desorbite")
+            else:
+                posable = voile_capable or 0.85 * a_max - g_sol >= 0.15 * g_sol
+            if not posable and self.etage_apres_posable(v, c, (ex, ey, evx, evy), u.t):
+                # la config APRÈS étage se pose : décrocher le poids mort du bas — un
+                # réservoir plein sous un moteur faible faisait refuser des fusées dont
+                # l'étage du haut (voile, train) se pose très bien tout seul.
+                self.etager_dabord = True
+                posable = True
+                u.dire(t("Pilote : séparation de l'étage avant la pose"), (120, 230, 140), 4)
+            if (not posable and chute_directe and c.atm_h > 0.0):
+                # l'entrée directe est condamnée (orbite rasante déjà dans l'air : le
+                # vaisseau arrive trop vite et trop de travers pour que la voile
+                # s'ouvre — posé de travers au ras du relief). Une désorbitation raide
+                # (périapside à -8 % de R, même cible que la désorbitation classique)
+                # tue la dérive horizontale : l'air freine alors comme sur un retour
+                # d'orbite basse, que la voile sait poser. On ne refusera que si même
+                # cette rentrée raide ne passe pas.
+                rp_raid = rp_cible_desorbite(c, monter=bool(
+                    v.orbite is not None and v.orbite.elliptique
+                    and v.orbite.rp < rp_cible_desorbite(c, True)))
+                ex2, ey2, evx2, evy2 = etat_apres_desorbitation(c, r, rp_raid)
+                if c.atm_h > 0.0 and bool(v.parachutes()):
+                    s_voile = 700.0 * len(v.parachutes())
+                    posable = bool(
+                        simule_rentree(c, ex2, ey2, evx2, evy2, v.masse(),
+                                       v.cd_a(-1.0, 0.0), s_voile=s_voile,
+                                       contact_max=v_pose, t0=u.t)
+                        or simule_rentree(c, ex2, ey2, evx2, evy2, v.masse(),
+                                          v.cd_a(-1.0, 0.0), 0.85 * a_max,
+                                          0.9 * v.delta_v(), s_voile=s_voile,
+                                          contact_max=v_pose, t0=u.t))
+                else:
+                    posable = bool(simule_rentree(
+                        c, ex2, ey2, evx2, evy2, v.masse(), v.cd_a(-1.0, 0.0),
+                        0.85 * a_max, 0.9 * v.delta_v(), contact_max=v_pose, t0=u.t))
+                if posable:
+                    ex, ey, evx, evy = ex2, ey2, evx2, evy2
+                    chute_directe = False          # on passera par « desorbite »
+                    u.dire(t("Pilote : freinage pour raidir la rentrée"),
+                           (120, 230, 140), 4)
+            if not posable:
                 u.dire(t("Pilote : moteur trop faible pour se poser ici"), (255, 150, 60), 5)
                 return False
             if tr is not None and tr.fin == "sortie":
@@ -637,13 +846,24 @@ class Atterrissage(Programme):
                 self.monter = bool(o is not None and o.elliptique
                                    and o.rp < rp_cible_desorbite(c, monter=True))
             monter = self.monter
-            cible = rp_cible_desorbite(c, monter=monter)
+            if self.abandon:
+                # remontée de secours : viser au-dessus de l'air (et du relief), pas le
+                # rasant — le but est de rendre un vaisseau en sécurité, pas de re-rentrer
+                cible = c.R + c.atm_h + max(2000.0, getattr(c, "relief_max", 0.0))
+            else:
+                cible = rp_cible_desorbite(c, monter=monter)
             v.sas = "pro" if monter else "retro"
             v.ref_vitesse = "orbite"
             erreur = abs(angle_pi(v.angle - (u.angle_sas(v) or v.angle)))
             v.gaz = 1.0 if erreur < 0.15 else 0.0
             u.accel = 0
             atteint = (o.rp >= cible - 200.0 if monter else o.rp < cible)
+            if o is not None and atteint and self.abandon:
+                # au-dessus de l'air : le vaisseau est en sécurité, on rend la main
+                v.gaz = 0.0
+                u.dire(t("Pilote : rentrée annulée, à vous de jouer"),
+                       (255, 150, 60), 6)
+                return False
             if o is not None and atteint:
                 v.gaz, self.phase = 0.0, "chute"
                 v.ref_vitesse = "surface"                # la descente, elle, se juge au sol
@@ -658,12 +878,47 @@ class Atterrissage(Programme):
                 # s'ouvrait au ras du sol.
                 from .constantes import POSE_V_MAX, POSE_V_MAX_TRAIN
                 v_pose = POSE_V_MAX_TRAIN if v.a_un_train() else POSE_V_MAX
-                air_seul = simule_rentree(c, x, y, vx, vy, v.masse(), v.cd_a(-1.0, 0.0),
+                args = (c, x, y, vx, vy, v.masse(), v.cd_a(-1.0, 0.0))
+                if v.parachutes():
+                    # la voile ouvre-t-elle à temps au-dessus du relief ? (contact jugé
+                    # sans limite de pose : le moteur finit le dernier mètre en dessous
+                    # de 250 m/s — et alt_ouv doit exister : une voile jamais ouverte
+                    # n'est pas une voile « à temps »). Jugé ICI, sur l'état réel :
+                    # le verdict du départ partait de la désorbitation CALCULÉE, mais le
+                    # vrai vol attend son alignement avant la mise à feu — la longitude
+                    # de rentrée, donc le relief sous la voile, peut différer.
+                    info = {}
+                    ouvre = simule_rentree(*args, s_voile=700.0 * len(v.parachutes()),
+                                           contact_max=1e9, t0=u.t, info=info)
+                    self.voile_a_temps = bool(ouvre and info.get("alt_ouv") is not None)
+                air_seul = simule_rentree(*args,
                                           s_voile=700.0 * len(v.parachutes()),
-                                          contact_max=v_pose)
+                                          contact_max=v_pose, t0=u.t)
+                self.air_seul_ok = bool(air_seul)
                 peut_poser = 0.85 * a_max - g_sol >= 0.15 * g_sol
                 self.brute_voile = bool(c.atm_h > 0.0 and v.parachutes()
                                         and not air_seul and not peut_poser)
+                # rentrée condamnée ? ni la voile (jamais à temps), ni le moteur (verdict
+                # complet raté, et pas de plan « brute » ni de freinage d'air au moteur
+                # pour l'amener à ouvrir) — foncer serait un crash assuré (trop lourd
+                # pour une seule voile, Hercule). On remonte le périapside au-dessus de
+                # l'air et on rend la main.
+                sans_espoir = c.atm_h > 0.0 and not self.en_ombre \
+                    and not self.voile_a_temps \
+                    and not air_seul and not self.brute_voile
+                if sans_espoir and essai_pose(u, v, self):
+                    # vol d'ombre : le VRAI contrôleur, joué jusqu'au bout, se pose —
+                    # les verdicts approchés s'étaient trompés, pas le vol : on fonce.
+                    sans_espoir = False
+                if sans_espoir:
+                    self.abandon = True
+                    self.monter = True
+                    self.phase = "desorbite"
+                    v.sas = "pro"
+                    v.ref_vitesse = "orbite"
+                    u.dire(t("Pilote : pose impossible ici, on remonte"),
+                           (255, 150, 60), 6)
+                    return True
             return True
         o = v.orbite
         if (c.atm_h > 0.0 and self.phase == "chute" and o is not None and o.elliptique
@@ -685,6 +940,13 @@ class Atterrissage(Programme):
             return True
         # distance d'arrêt si l'on freinait maintenant (avec une marge)
         peut_freiner = a_max * 0.85 - pesanteur > 0.0   # le moteur peut-il arrêter la chute ?
+        # freinage_utile à 0,85 de la poussée et entrée en freinage à 1,25·arret + 40 :
+        # le freinage démarre tôt, et c'est VOLONTIER — tuer la dérive horizontale
+        # d'une rentrée prend du temps, il faut s'y prendre en haute altitude (le
+        # lander à deux étages se pose grâce à ce départ anticipé ; un déclencheur
+        # « optimal » au ras du profil le faisait s'écraser à 108 m/s de dérive).
+        # Les vaisseaux que ce freinage long condamne (survol : gravité mange le
+        # gain) sont REFUSÉS par le verdict de la rentrée, qui imite cette formule.
         freinage_utile = max(0.1, a_max * 0.85 - pesanteur)
         arret = vitesse * vitesse / (2.0 * freinage_utile)
         if self.phase == "chute":
@@ -706,19 +968,15 @@ class Atterrissage(Programme):
                 u.accel = min(_accel_pour(reste), 3)
                 return True
             # avec un parachute à bord : ne rien brûler tant que la vitesse dépasse la
-            # limite d'ouverture et que l'air peut encore nous y amener (vitesse terminale
-            # à la densité locale, ou au pire au sol : en descendant l'air se densifie et
-            # l'emportera — inutile de brûler tout le carburant haut dans le ciel)
-            attend_voile = air_finira = False
-            if c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0:
-                cd_a = v.cd_a(-1.0, 0.0)         # queue devant, le vent par la flamme
-                rho = c.densite(u.altitude(v))
-                attend_voile = (rho > 0.0 and sqrt(2.0 * v.masse() * g_sol
-                                                   / (rho * cd_a)) <= 250.0)
-                # seuil 200 et non 250 : à la limite exacte, la voile ne s'ouvrirait
-                # qu'au ras du sol (vt atteinte asymptotiquement) — il faut de la marge
-                air_finira = sqrt(2.0 * v.masse() * g_sol / (c.rho0 * cd_a)) <= 200.0
-            if attend_voile or air_finira:
+            # limite d'ouverture ET que le verdict (jugé sur l'état réel à la fin de la
+            # désorbitation) promet que l'air amène la voile à temps, au-dessus du
+            # relief. Les vieilles formules de vitesse terminale se trompaient sur les
+            # rentrées rasantes : quasi horizontal, le vaisseau plane à 300 m/s jusqu'au
+            # relief et la voile n'ouvre jamais — le verdict, lui, intègre la vraie
+            # trajectoire.
+            attend_voile = (c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0
+                            and self.voile_a_temps)
+            if attend_voile:
                 # attendre l'air : l'air seul amènera la voile à sa vitesse d'ouverture
                 # (vitesse terminale locale ou au sol sous 200-250), on se laisse porter
                 reste = hauteur / max(1.0, -v_vert)
