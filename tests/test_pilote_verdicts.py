@@ -115,7 +115,8 @@ def test_etage_puis_pose_a_sec():
     fini, msgs = piloter_jusquau_verdict(u, v, sc, limite_s=600.0)
     print("   à sec 6 km :", "posé" if v.mode == "pose" else msgs[-2:])
     assert fini and v.mode == "pose" and not v.detruit, msgs
-    assert any("séparation de l'étage avant la pose" in m for m in msgs), msgs
+    # la séparation passe par le largage standard (« Séparation de l'étage »)
+    assert any("séparation de l'étage" in m.lower() for m in msgs), msgs
 
 
 def test_etage_refuse_sur_orbite_stable():

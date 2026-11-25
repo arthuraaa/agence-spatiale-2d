@@ -744,6 +744,28 @@ class Atterrissage(Programme):
             # déployée), qui n'était jamais consulté — la capsule s'écrasait à sa
             # vitesse terminale en silence. Une fois le verdict rendu (chute ou
             # desorbite), on déploie à 250 m/s comme avant.
+            # L'étage du bas vient de finir son freinage : si ce qui restera
+            # au-dessus du découpleur se pose À L'AIR PUR (vitesse terminale sous
+            # voile sous la limite, quel que soit le relief), on le largue avant
+            # d'ouvrir — sinon le moteur ne servirait qu'à la dernière ligne
+            # droite et finirait à sec (« largue tout au retour »). L'image
+            # suivante, la voile s'ouvre sur la capsule allégée.
+            from .vaisseau import indice_decoupleur_bas, Vaisseau
+            from .constantes import (POSE_V_MAX, POSE_V_MAX_TRAIN,
+                                     POSE_H_MAX, POSE_H_MAX_TRAIN)
+            i = indice_decoupleur_bas(v.pieces)
+            if i:
+                essai = Vaisseau("essai", v.pieces[:i], c)
+                if essai.parachutes():
+                    train = essai.a_un_train()
+                    if simule_rentree(c, x, y, vx, vy, essai.masse(),
+                                      essai.cd_a(-1.0, 0.0),
+                                      s_voile=700.0 * len(essai.parachutes()),
+                                      contact_max=POSE_V_MAX_TRAIN if train else POSE_V_MAX,
+                                      h_max=POSE_H_MAX_TRAIN if train else POSE_H_MAX,
+                                      t0=u.t):
+                        u.separer_etage()
+                        return True
             v.gaz = 0.0          # la voile se déploie moteurs coupés : jamais ouvrir
             u.ouvrir_parachute() # le parachute dans la flamme du freinage
             v.sas = "stab"      # la voile redresse le vaisseau (le RÉTRO l'alignait sur

@@ -169,8 +169,7 @@ confidentialité).
   les compteurs de carrière (lancements, étages largués, vaisseaux perdus...) : ils sont
   gardés d'une partie à l'autre et annoncés en vol (« ★ Nouveau jalon »). À côté, l'écran
   **Album photo** garde les grands moments de la partie : le jeu photographie les posés et
-  les amarrages, et le bouton **Photo** en vol (ou la touche `B` pour planter un drapeau)
-  ajoute les tiens. 20 photos au plus, consultables en plein écran, supprimables.
+  les amarrages. 20 photos au plus, consultables en plein écran, supprimables.
 - **Hangar** : clique sur les pièces à gauche pour les empiler **du nez vers le moteur**.
   Un clic sur une pièce de la fusée la sélectionne (`Suppr` la retire, `↑ ↓` la déplace,
   une nouvelle pièce s'insère juste en dessous). À droite : masse, prix, Δv et poussée/poids
@@ -324,8 +323,10 @@ Le bouton **Pilote** (touche `G` sur PC) propose ce qui est utile sur le moment 
   sur une planète : c'est la capture).
 - **Atterrissage automatique** : désorbitation si besoin, chute en temps accéléré, freinage
   au dernier moment, puis descente verticale douce jusqu'au contact. Avec un parachute
-  à bord, la voile se déploie moteurs coupés et fait le gros du freinage ; le moteur
-  ne rallume que pour la dernière ligne droite (à hauteur d'arrêt du sol). Avant de
+  à bord, la voile se déploie moteurs coupés et fait le gros du freinage ; si la
+  capsule seule se pose à l'air pur sous sa voile, l'étage de freinage est largué à
+  l'ouverture (sinon le moteur ne rallume que pour la dernière ligne droite, à hauteur
+  d'arrêt du sol). Avant de
   foncer, il juge la
   rentrée (parachute à temps ? le moteur peut-il arrêter la chute ?) AVANT d'ouvrir la
   voile, et même de séparer un étage mort que la capsule seule sait poser : si c'est
