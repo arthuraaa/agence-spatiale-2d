@@ -232,21 +232,55 @@ def test_gestes(app, main):
     main.bouton("☰")
     image(app)
     assert sc.panneau == "pause"
+    ref_b = next(b for b in main.boutons() if b.libelle.startswith("Référence"))
+    ref0 = v.ref_vitesse
+    main.taper(ref_b.rect.center)
+    assert v.ref_vitesse != ref0, "le bouton Référence du menu pause doit cycler"
+    cam_b = next(b for b in main.boutons() if b.libelle.startswith("Caméra"))
+    cam0 = sc.cam.mode
+    main.taper(cam_b.rect.center)
+    assert sc.cam.mode != cam0, "le bouton Caméra du menu pause doit cycler"
     main.bouton("Missions")
     image(app)
     assert sc.panneau == "missions"
     app.traiter(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_AC_BACK, scancode=0, unicode="", mod=0))
     assert sc.panneau is None, sc.panneau
-    # --- RCS : la croix apparaît et pousse le vaisseau
+    # --- RCS : la manette ronde apparaît ; un doigt en haut pousse vers le nez
     main.bouton("RCS")
     image(app)
     mono0 = v.mono()
-    main.poser(6, main.commande(("rcs", 1, 0)))
+    croix = sc.hud.rect_croix
+    assert croix is not None
+    main.poser(6, croix.center)
+    main.glisser(6, (croix.centerx, croix.centery - 70))
     image(app, 60)
     main.lever(6)
     image(app)
-    assert v.mono() < mono0, "la croix RCS doit consommer du monergol"
-    print("   gestes OK (pincement, nœud, poignées, menu, retour Android, RCS)")
+    assert v.mono() < mono0, "la manette RCS doit consommer du monergol"
+    print("   gestes OK (pincement, nœud, poignées, menu, retour Android, manette RCS)")
+
+
+def test_boutons_legers(app, main):
+    """Colonne droite allégée : plus de boutons Référence/Caméra dans le HUD, et les
+    actions rares (Drapeau…) se cachent derrière « … » comme les modes SAS."""
+    sc, u = app.scene, app.univers
+    v = u.actif
+    app.scene.dessiner(app.ecran)
+    labels = [b.libelle for b in sc.hud.boutons]
+    assert "Surf." not in labels and "Auto" not in labels and "Orb." not in labels, labels
+    v.mode = "pose"                                    # posé : « Drapeau » existe mais caché
+    app.scene.dessiner(app.ecran)
+    assert "Drapeau" not in [b.libelle for b in sc.hud.boutons]
+    points = [b for b in sc.hud.boutons if b.libelle == "…" and b.rect.width > 100]
+    assert points, "le « … » du contexte doit apparaître quand des actions rares existent"
+    points[0].action()                                 # déplie le volet
+    app.scene.dessiner(app.ecran)
+    assert "Drapeau" in [b.libelle for b in sc.hud.boutons]
+    points[0].action()                                 # le replie à nouveau
+    app.scene.dessiner(app.ecran)
+    assert "Drapeau" not in [b.libelle for b in sc.hud.boutons]
+    v.mode = "physique"
+    print("   boutons légers OK (contexte replié, référence/caméra dans le menu pause)")
 
 
 def test_hangar_au_doigt():
@@ -381,6 +415,7 @@ print("sauvegarde", sauvegarde.chemin_sauvegarde())
 if __name__ == "__main__":
     app, main = test_orbite_au_doigt()
     test_gestes(app, main)
+    test_boutons_legers(app, main)
     test_hangar_au_doigt()
     test_singe_multi_doigts()
     test_android_simule()

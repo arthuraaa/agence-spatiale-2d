@@ -8,7 +8,7 @@ from .constantes import (BLANC, GRIS, CYAN, VERT, ROUGE, JAUNE, ORANGE, ACCEL_MA
                          NOEUD_RAYON_POIGNEE_TACTILE, NOEUD_CLIC_TACTILE, TOLERANCE_DOIGT)
 from .rendu import Camera, dessiner_monde, objet_sous_souris
 from .hud import Hud
-from .hud_tactile import HudTactile
+from .hud_tactile import HudTactile, LIBELLES_CAM, LIBELLES_REF
 from .tactile import Doigts
 from . import plateforme, reglages, sons, triche, album
 from .corps import Corps
@@ -291,9 +291,16 @@ class SceneVol:
     # ------------------------------------------------------------- événements
     # ------------------------------------------------------ écran tactile
     def commandes_tenues(self):
-        """Commandes maintenues par un doigt : "gaz", ("rot", ±1), ("rcs", avant, côté)."""
+        """Commandes maintenues par un doigt : "gaz", ("rot", ±1), manette RCS ("rcs_joy", …)."""
         return {d.prise for d in self.doigts.actifs.values()
-                if d.prise == "gaz" or (isinstance(d.prise, tuple) and d.prise[0] in ("rot", "rcs"))}
+                if d.prise == "gaz" or (isinstance(d.prise, tuple) and d.prise[0] in ("rot", "rcs", "rcs_joy"))}
+
+    def doigt_sur(self, prise):
+        """Le doigt qui tient cette commande (pour la manette RCS, sa position compte)."""
+        for d in self.doigts.actifs.values():
+            if d.prise == prise:
+                return d
+        return None
 
     def _evenement_tactile(self, ev):
         if ev.type == pygame.KEYDOWN:                 # bouton « retour » d'Android, clavier Bluetooth
@@ -323,7 +330,7 @@ class SceneVol:
         commande = self.hud.zone(d.pos)                # manette des gaz, rotation, RCS
         if commande is not None:
             d.prise = commande
-            if commande == "gaz" or commande[0] in ("rot", "rcs"):
+            if commande == "gaz" or commande[0] in ("rot", "rcs", "rcs_joy"):
                 u.arreter_pilote()                     # le joueur reprend la main
             if commande == "gaz" and a is not None:
                 a.gaz = self.hud.gaz_depuis(d.pos[1])
@@ -347,7 +354,7 @@ class SceneVol:
         a = self.u.actif
         if d.prise == "gaz" and a is not None:
             a.gaz = self.hud.gaz_depuis(d.pos[1])
-        elif isinstance(d.prise, tuple) and d.prise[0] in ("rot", "rcs"):
+        elif isinstance(d.prise, tuple) and d.prise[0] in ("rot", "rcs", "rcs_joy"):
             nouvelle = self.hud.zone(d.pos)            # le pouce peut glisser d'un bouton à l'autre
             if nouvelle is not None and nouvelle != "gaz":
                 d.prise = nouvelle
@@ -559,6 +566,15 @@ class SceneVol:
                     elif c[0] == "rcs" and a.rcs:
                         cmd.avant += c[1]
                         cmd.cote += c[2]
+                    elif c[0] == "rcs_joy" and a.rcs:   # manette ronde : poussée continue
+                        d = self.doigt_sur(c)
+                        if d is not None:
+                            dx, dy = d.pos[0] - c[1], d.pos[1] - c[2]
+                            n = hypot(dx, dy)
+                            if n > 12.0:                # zone morte au centre
+                                f = min(1.0, (n - 12.0) / 60.0)
+                                cmd.avant += -dy / n * f    # haut de l'écran = vers le nez
+                                cmd.cote += dx / n * f
                 cmd.rotation = max(-1, min(1, cmd.rotation))
                 cmd.avant = max(-1, min(1, cmd.avant))
                 cmd.cote = max(-1, min(1, cmd.cote))
@@ -859,6 +875,10 @@ class SceneVol:
                 (t("Sauvegarder"), self.sauvegarder, True),
                 (t("Transfert de carburant"), lambda: self.ouvrir("carburant"),
                  u.actif is not None and len(u.actif.sections_reservoirs()) >= 2),
+                # la référence de vitesse et la caméra ont quitté le HUD : elles vivent ici
+                (t("Référence : {ref}", ref=t(LIBELLES_REF.get(u.actif.ref_vitesse, "Vit."))),
+                 self.changer_reference, u.actif is not None),
+                (t("Caméra : {mode}", mode=t(LIBELLES_CAM[self.cam.mode])), self.changer_camera, True),
                 (t("Options"), lambda: self.ouvrir("options"), True),
                 (t("Hangar (nouveau vaisseau)"), app.aller_hangar, True),
                 (t("Revenir au lancement"), app.revenir_au_lancement, u.instantane is not None),

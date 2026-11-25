@@ -161,6 +161,8 @@ TOUT = {
     "ÉTAGE": {"fr": "ÉTAGE", "en": "STAGE"},
     "Désamarrer": {"fr": "Désamarrer", "en": "Undock"},
     "RCS": {"fr": "RCS", "en": "RCS"},
+    "Référence : {ref}": {"fr": "Référence : {ref}", "en": "Reference: {ref}"},
+    "Caméra : {mode}": {"fr": "Caméra : {mode}", "en": "Camera: {mode}"},
     "Surf.": {"fr": "Surf.", "en": "Srf."},
     "Orb.": {"fr": "Orb.", "en": "Orb."},
     "Vit.": {"fr": "Vit.", "en": "Spd"},

@@ -35,9 +35,6 @@ H_SAS, PAS_SAS = 46, 62
 R_CADRAN = 40
 SAS = [("off", "OFF"), ("stab", "STAB"), ("pro", "PRO"), ("retro", "RÉTRO"), ("rad+", "RAD+"),
        ("rad-", "RAD−"), ("cible", "CIBLE"), ("anti", "ANTI"), ("manoeuvre", "MAN")]
-# croix de translation RCS : (commande, colonne, ligne, symbole) ; avant = vers le nez du vaisseau
-CROIX_RCS = [(("rcs", 1, 0), 0, -1, "▲"), (("rcs", -1, 0), 0, 1, "▼"),
-             (("rcs", 0, -1), -1, 0, "◀"), (("rcs", 0, 1), 1, 0, "▶")]
 LIBELLES_REF = {"surface": "Surf.", "orbite": "Orb.", "cible": "Cible"}   # clés -> textes
 LIBELLES_CAM = {"auto": "Auto", "horizon": "Horiz.", "nord": "Nord"}
 
@@ -55,11 +52,16 @@ class HudTactile(Hud):
         self.y_haut_sas = 0
         self.rect_croix = None                # zone de la croix RCS (elle a priorité sur les panneaux)
         self.sas_etendu = False               # « … » déplie les modes SAS moins utilisés
+        self.contexte_etendu = False          # « … » déplie les actions rares de la colonne
 
     # ------------------------------------------------------------ doigts
     def derouler_sas(self):
         """Le bouton « … » déplie les modes SAS moins utilisés (RAD+, RAD−, CIBLE, ANTI, MAN)."""
         self.sas_etendu = not self.sas_etendu
+
+    def derouler_contexte(self):
+        """Le bouton « … » déplie les actions rares (Récupérer, Désamarrer, Carburant, Drapeau)."""
+        self.contexte_etendu = not self.contexte_etendu
 
     def zone(self, pos):
         """Commande à maintenir sous le doigt : "gaz", ("rot", ±1), ("rcs", avant, côté) ou None."""
@@ -121,25 +123,29 @@ class HudTactile(Hud):
         y -= 8 + 56
         if indice_decoupleur_bas(a.pieces):          # la place reste réservée : rien ne bouge
             b.append(Bouton((x0, y, L_COLONNE, 56), t("ÉTAGE"), u.separer_etage, 20))
-        contexte = []
-        if u.peut_recuperer(a):
-            contexte.append((t("Récupérer"), sc.recuperer))
-        if a.jonctions():
-            contexte.append((t("Désamarrer"), u.desamarrer))
-            contexte.append((t("Carburant"), lambda: sc.ouvrir("carburant")))
+        # Le parachute reste visible (décision urgentée) ; les actions plus rares se
+        # déplient via « … », comme les modes SAS, pour ne pas encombrer la colonne.
         if any(p.parachute == "plie" for p in a.pieces) and a.corps.atm_h > 0 and a.mode != "pose":
-            contexte.append((t("Parachute"), u.ouvrir_parachute))
-        if a.mode == "pose" and not a.corps.gazeux:
-            contexte.append((t("Drapeau"), u.planter_drapeau))
-        for lib, act in contexte:
             y -= 6 + 44
-            b.append(Bouton((x0, y, L_COLONNE, 44), lib, act, 17))
+            b.append(Bouton((x0, y, L_COLONNE, 44), t("Parachute"), u.ouvrir_parachute, 17))
+        rare = []
+        if u.peut_recuperer(a):
+            rare.append((t("Récupérer"), sc.recuperer))
+        if a.jonctions():
+            rare.append((t("Désamarrer"), u.desamarrer))
+            rare.append((t("Carburant"), lambda: sc.ouvrir("carburant")))
+        if a.mode == "pose" and not a.corps.gazeux:
+            rare.append((t("Drapeau"), u.planter_drapeau))
+        if rare:
+            y -= 6 + 44
+            b.append(Bouton((x0, y, L_COLONNE, 44), "…", self.derouler_contexte, 18,
+                            allume=self.contexte_etendu))
+            if self.contexte_etendu:
+                for lib, act in rare:
+                    y -= 6 + 44
+                    b.append(Bouton((x0, y, L_COLONNE, 44), lib, act, 17))
         y -= 8 + 40
-        for k, (lib, act, allume) in enumerate(((t("RCS"), sc.basculer_rcs, a.rcs),
-                                                (t(LIBELLES_REF.get(a.ref_vitesse, "Vit.")),
-                                                 sc.changer_reference, False),
-                                                (t(LIBELLES_CAM[sc.cam.mode]), sc.changer_camera, False))):
-            b.append(Bouton((x0 + k * 65, y, 60, 40), lib, act, 14, allume=allume))
+        b.append(Bouton((x0, y, L_COLONNE, 40), t("RCS"), sc.basculer_rcs, 14, allume=a.rcs))
         # ---- manette des gaz, à gauche sous le panneau de vol
         self.rect_gaz = pygame.Rect(MX, M + H_INFOS + 12, L_GAZ, h - 2 * M - H_INFOS - 12)
         maintenus.append((self.rect_gaz, "gaz", ""))
@@ -170,11 +176,10 @@ class HudTactile(Hud):
             self.cadran = (xs + larg // 2, self.y_haut_sas - R_CADRAN - 14)
         # ---- croix de translation RCS (seulement quand le RCS est allumé)
         self.rect_croix = None
-        if a.rcs:
+        if a.rcs:                          # une manette ronde au lieu des quatre flèches
             cx, cy = x0 - 110, h - 230
             self.rect_croix = pygame.Rect(cx - 95, cy - 95, 190, 190)
-            for commande, i, j, symbole in CROIX_RCS:
-                maintenus.append((pygame.Rect(cx + i * 62 - 29, cy + j * 62 - 29, 58, 58), commande, symbole))
+            maintenus.append((self.rect_croix, ("rcs_joy", cx, cy), "⊕"))
         # ---- boutons du panneau de manœuvre (sur écran étroit, la croix RCS a la priorité)
         self.noeud_visible = a.noeud is not None and not (a.rcs and l < 900)
         obstacles = [rect for rect, commande, _ in maintenus if commande != "gaz"]
@@ -264,11 +269,15 @@ class HudTactile(Hud):
         self._temps_tactile(surf, u)
         tenues = self.scene.commandes_tenues()
         for rect, commande, symbole in self.maintenus:
-            if commande != "gaz":
-                allume = commande in tenues
-                pygame.draw.rect(surf, (30, 90, 130) if allume else (24, 34, 56), rect, border_radius=8)
-                pygame.draw.rect(surf, CYAN if allume else BORD_PANNEAU, rect, 1, border_radius=8)
-                texte(surf, symbole, rect.center, 34 if commande[0] == "rot" else 24, BLANC, ancre="c")
+            if commande == "gaz":
+                continue
+            if commande[0] == "rcs_joy":                   # la manette RCS se dessine ronde
+                self._joystick(surf, rect, commande)
+                continue
+            allume = commande in tenues
+            pygame.draw.rect(surf, (30, 90, 130) if allume else (24, 34, 56), rect, border_radius=8)
+            pygame.draw.rect(surf, CYAN if allume else BORD_PANNEAU, rect, 1, border_radius=8)
+            texte(surf, symbole, rect.center, 34 if commande[0] == "rot" else 24, BLANC, ancre="c")
         self._popup(surf, u, souris, l, h)
         self._menu_pilote(surf, u, souris, l, h)
 
@@ -305,6 +314,21 @@ class HudTactile(Hud):
         etages = statistiques_etages(a.pieces)
         texte(surf, t("Δv étage {dv} m/s", dv=fmt_nombre(etages[0]["dv"]) if etages else "0"),
               (MX + 10, M + 172), 13, BLANC)
+
+    def _joystick(self, surf, rect, commande):
+        """Manette de translation RCS : le doigt s'écarte du centre, la poussée suit."""
+        tenue = commande in self.scene.commandes_tenues()
+        cx, cy = rect.center
+        pygame.draw.circle(surf, (24, 34, 56), (cx, cy), rect.width // 2)
+        pygame.draw.circle(surf, CYAN if tenue else BORD_PANNEAU, (cx, cy), rect.width // 2, 1)
+        for d in self.scene.doigts.actifs.values():    # le point suit le doigt (borné au bord)
+            if d.prise == commande:
+                dx, dy = d.pos[0] - cx, d.pos[1] - cy
+                n = hypot(dx, dy)
+                if n > 78.0:
+                    dx, dy = dx * 78.0 / n, dy * 78.0 / n
+                pygame.draw.circle(surf, CYAN, (int(cx + dx), int(cy + dy)), 18)
+                break
 
     def _gaz(self, surf, a):
         """Manette des gaz : une jauge verticale qu'on règle en y glissant le doigt."""

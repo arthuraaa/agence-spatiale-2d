@@ -83,9 +83,10 @@ est dans **`PUBLICATION.md`**.
 |---|---|
 | gaz | poser le doigt sur la manette de gauche et glisser (en bas = coupé) |
 | tourner | maintenir ⟲ ou ⟳ (en bas à droite) |
-| étage, parachute, désamarrer, récupérer | boutons de la colonne de droite |
+| étage, parachute | boutons de la colonne de droite (« … » déplie récupérer, désamarrer, carburant, drapeau) |
 | SAS | boutons du bas (STAB, PRO, RÉTRO, puis « … » déplie RAD+, RAD−, CIBLE, ANTI, MAN) |
-| RCS | bouton RCS, puis maintenir ▲ ▼ ◀ ▶ |
+| RCS | bouton RCS, puis glisser le doigt sur la manette ronde : la poussée suit le doigt |
+| référence, caméra | dans le menu ☰ (pause) |
 | temps | ◀ et ▶ en haut ; taper au centre remet à x1 |
 | zoom | pincer à deux doigts |
 | cibler, centrer, contrôler | taper sur une planète ou un vaisseau |
