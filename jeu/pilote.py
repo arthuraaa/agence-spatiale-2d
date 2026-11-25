@@ -40,6 +40,17 @@ class Programme:
         """Appelé à chaque image. Renvoie False quand le programme est terminé."""
         return False
 
+    def etat_dict(self):
+        """État du programme pour la sauvegarde : champs simples (nombres, textes) ;
+        la cible, si le programme en a une, est passée par son NOM de vaisseau."""
+        d = {}
+        for cle, val in vars(self).items():
+            if isinstance(val, (bool, int, float, str)) or val is None:
+                d[cle] = val
+            elif cle == "cible" and hasattr(val, "nom"):
+                d[cle] = val.nom
+        return d
+
     @staticmethod
     def etager_si_vide(u, v):
         if v.gaz > 0 and v.etage_epuise():
@@ -162,7 +173,12 @@ class MiseEnOrbite(Programme):
 
     def piloter(self, u, v):
         c = v.corps
-        ap_vise = c.atm_h * 1.85 if c.atm_h > 0 else 0.15 * c.R
+        ap_vise = c.atm_h * 3.0 if c.atm_h > 0 else 0.15 * c.R
+        # (3× le plafond de l'air, pas 1,85 : trop bas, l'orbite « basse » collait à
+        # l'atmosphère et la rentrée d'atterrissage n'avait plus aucune marge — voile
+        # jamais à temps en raide, décroissance chaotique en douceur. À ~3 plafonds,
+        # la rentrée raide donne à la voile le freinage qu'il faut : mesuré, le
+        # Pionnier se pose depuis 20-24 km et refusait à 13-19 km.)
         x, y, vx, vy = u.etat(v)
         alt = hypot(x, y) - c.R
         haut = atan2(y, x)
@@ -523,7 +539,7 @@ def essai_pose(u, v, programme, limite_pas=60 * 1200, depart=None):
     prg = Atterrissage()
     for cle in ("phase", "monter", "capture_faite", "etager_dabord", "abandon",
                 "voile_a_temps", "air_seul_ok", "brute_voile", "verdict_posable",
-                "verdict_moteur"):
+                "verdict_moteur", "rasant"):
         setattr(prg, cle, getattr(programme, cle, None))
     if depart is not None:
         prg.phase = depart
@@ -587,6 +603,7 @@ class Atterrissage(Programme):
         self.en_ombre = False                    # vol d'essai (essai_pose) : jamais d'abandon
         self.monter = None                       # sens de la désorbitation (fixé à l'entrée)
         self.etager_dabord = False               # verdict raté, mais la config après étage passe
+        self.rasant = False                      # rentrée raide refusée : on retente en douceur
 
     def etage_apres_posable(self, v, c, etat_cible, t0):
         """Ce qui restera APRÈS le prochain étage (au-dessus du découpleur du bas)
@@ -911,6 +928,21 @@ class Atterrissage(Programme):
                     # vol d'ombre : le VRAI contrôleur, joué jusqu'au bout, se pose —
                     # les verdicts approchés s'étaient trompés, pas le vol : on fonce.
                     sans_espoir = False
+                if sans_espoir and not self.rasant and not self.abandon:
+                    # la rentrée RAIDE est condamnée (voile jamais à temps) : avant de
+                    # renoncer, on tente la douce — relever le périapside au rasant,
+                    # l'air freine en plusieurs passes. On ne l'engage que si le VRAI
+                    # contrôleur, joué en vol d'ombre jusqu'au bout, se pose : sur une
+                    # rentrée en plusieurs passes, le verdict approché ment (voile
+                    # « à temps » sur le papier, ouverte au ras du relief en vrai).
+                    self.rasant, self.monter = True, True
+                    self.phase = "desorbite"
+                    if essai_pose(u, v, self):
+                        v.sas, v.ref_vitesse = "pro", "orbite"
+                        u.dire(t("Pilote : rentrée raide refusée, essai en douceur"),
+                               (120, 230, 140), 5)
+                        return True
+                    # (sinon, sans_espoir est confirmé : l'abandon ci-dessous rend la main)
                 if sans_espoir:
                     self.abandon = True
                     self.monter = True
@@ -923,7 +955,7 @@ class Atterrissage(Programme):
             return True
         o = v.orbite
         if (c.atm_h > 0.0 and self.phase == "chute" and o is not None and o.elliptique
-                and not self.capture_faite
+                and not self.capture_faite and not self.rasant
                 and o.ra - c.R < 0.25 * c.R and o.rp > c.R - 0.08 * c.R):
             # l'aérofreinage a capté le vaisseau sur une orbite basse : on désorbite
             # maintenant comme depuis une orbite basse classique (périapside à 8 %
@@ -933,6 +965,8 @@ class Atterrissage(Programme):
             # Une seule fois : sinon il repartait en désorbitation pendant la rentrée
             # même (le rp d'un deorbit classique reste au-dessus de R - 8 %) et il
             # brûlait son carburant dans une boucle désorbite/chute.
+            # (pas pour la rentrée douce `rasant` : son périapside au ras de l'air
+            # EST le plan — la replonger en raide la condamnait)
             self.capture_faite = True
             self.phase = "desorbite"
             self.monter = None                     # re-décider le sens pour cette capture
@@ -975,8 +1009,25 @@ class Atterrissage(Programme):
             # rentrées rasantes : quasi horizontal, le vaisseau plane à 300 m/s jusqu'au
             # relief et la voile n'ouvre jamais — le verdict, lui, intègre la vraie
             # trajectoire.
+            # rentrée douce : aérofreinage discipliné — après chaque passe, près de
+            # l'apoapside et hors de l'air, replacer le périapside au rasant. Sans
+            # ça, l'orbite décroît passe après passe et la dernière plonge : la
+            # voile s'ouvrait au ras du relief (Pionnier écrasé à 278 m/s).
+            if (self.rasant and not v.parachute_ouvert() and c.atm_h > 0.0
+                    and o is not None and o.elliptique and u.altitude(v) > c.atm_h
+                    and -v_vert < 30.0):
+                rp_rasant = rp_cible_desorbite(c, monter=True)
+                if o.rp < rp_rasant - 300.0:
+                    v.sas, v.ref_vitesse = "pro", "orbite"
+                    erreur = abs(angle_pi(v.angle - (u.angle_sas(v) or v.angle)))
+                    v.gaz = 1.0 if (erreur < 0.15 and o.rp < rp_rasant - 200.0) else 0.0
+                    return True
+            # attendre l'air : la voile s'ouvrira sous 250 m/s. En rentrée douce, on
+            # glide QUOI QU'EN dise les verdicts approchés (ils se trompent sur les
+            # passes multiples) — l'aérofreinage discipliné garde les passes hautes,
+            # et le vol d'ombre a validé le plan complet avant de l'engager.
             attend_voile = (c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0
-                            and self.voile_a_temps)
+                            and (self.voile_a_temps or self.rasant))
             if attend_voile:
                 # attendre l'air : l'air seul amènera la voile à sa vitesse d'ouverture
                 # (vitesse terminale locale ou au sol sous 200-250), on se laisse porter
@@ -1005,6 +1056,7 @@ class Atterrissage(Programme):
                 # chaque passage gaspillerait le carburant qu'il faut pour la pose
                 tr2 = v.troncons[0] if v.troncons else None
                 if (c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0
+                        and not self.rasant
                         and c.densite(u.altitude(v)) > 0.0
                         and tr2 is not None and tr2.fin in ("impact", "atmo")):
                     v.gaz = 1.0
@@ -1444,3 +1496,36 @@ def infos_amarrage(u, v):
             ("Écart latéral", geo["lateral"], d < 20.0 and abs(geo["lateral"]) > 1.0),
             ("Alignement", abs(geo["erreur"]) * 180.0 / pi, d < 20.0 and abs(geo["erreur"]) > 0.35),
             ("Ports (nous → cible)", "%s → %s" % geo["ports"], False)]
+
+
+def programme_vers_dict(prg):
+    """Programme du pilote prêt pour la sauvegarde (classe + état simple)."""
+    return {"classe": type(prg).__name__, "etat": prg.etat_dict()}
+
+
+def programme_depuis_dict(donnees, u):
+    """Reconstruit le programme sauvegardé ; None s'il est irrécupérable (classe
+    inconnue, cible perdue) — pas de pilote du tout vaut mieux qu'un crash."""
+    fabriques = {c.__name__: c for c in
+                 (ExecuterNoeud, MiseEnOrbite, Atterrissage, Amarrage, RendezVous)}
+    cls = fabriques.get(donnees.get("classe", ""))
+    if cls is None:
+        return None
+    prg = cls(None) if donnees["classe"] in ("Amarrage", "RendezVous") else cls()
+    etat = dict(donnees.get("etat", {}))
+    nom_cible = etat.pop("cible", None)
+    for cle, val in etat.items():
+        setattr(prg, cle, val)
+    # les sous-programmes et la géométrie d'amarrage ne sont pas sauvegardés :
+    # repartir de la phase qui les recrée (circularisation replanifiée, départ
+    # du rendez-vous replanifié) plutôt que de piller sur un attribut vide
+    if getattr(prg, "phase", "x") == "circularisation" and getattr(prg, "circularisation", 1) is None:
+        prg.phase = "montee"
+    if (getattr(prg, "etape", "x") in ("depart", "amarrage")
+            and getattr(prg, "sous", 1) is None):
+        prg.etape = "plan"            # croisiere, elle, ne lit pas `sous` : elle reste
+    if nom_cible is not None:
+        prg.cible = next((w for w in u.vaisseaux if w.nom == nom_cible), None)
+        if prg.cible is None:
+            return None
+    return prg

@@ -641,6 +641,7 @@ TOUT = {
     "Pilote : séparation de l'étage avant la pose": {"fr": "Pilote : séparation de l'étage avant la pose", "en": "Autopilot: staging before landing"},
     "Pilote : freinage pour raidir la rentrée": {"fr": "Pilote : freinage pour raidir la rentrée", "en": "Autopilot: braking to steepen the approach"},
     "Pilote : pose impossible ici, on remonte": {"fr": "Pilote : pose impossible ici, on remonte au-dessus de l'air", "en": "Autopilot: cannot land here, climbing back above the air"},
+    "Pilote : rentrée raide refusée, essai en douceur": {"fr": "Pilote : rentrée raide refusée, essai en douceur (plusieurs passes dans l'air)", "en": "Pilot: steep re-entry rejected, trying gentle descent (several air passes)"},
     "Pilote : rentrée annulée, à vous de jouer": {"fr": "Pilote : rentrée annulée, le vaisseau est en sécurité — à vous de jouer", "en": "Autopilot: reentry canceled, the ship is safe — over to you"},
     "Pilote : moteur trop faible pour se poser ici": {"fr": "Pilote : moteur trop faible pour se poser ici", "en": "Autopilot: engine too weak to land here"},
     "Pilote : on quitte {corps}, pas d'atterrissage ici": {"fr": "Pilote : on quitte {corps}, pas d'atterrissage ici", "en": "Autopilot: leaving {corps}, no landing here"},

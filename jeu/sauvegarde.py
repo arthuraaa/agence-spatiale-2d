@@ -6,6 +6,7 @@ from .pieces import Piece
 from .vaisseau import Vaisseau
 from .corps import Corps
 from .manoeuvre import Manoeuvre
+from . import pilote as mod_pilote
 
 _DOSSIER_JEU = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -47,6 +48,8 @@ def univers_vers_dict(u):
         "cible": cible,
         "triche": dict(u.triche),
         "drapeaux_sol": list(u.drapeaux_sol),
+        # le pilote automatique suit la partie : il reprendra où il en était au chargement
+        "pilote": mod_pilote.programme_vers_dict(u.pilote) if u.pilote is not None else None,
     }
 
 
@@ -94,6 +97,9 @@ def dict_vers_univers(d):
             u.cible = u.par_nom.get(c["corps"])
         elif 0 <= c.get("vaisseau", -1) < len(u.vaisseaux):
             u.cible = u.vaisseaux[c["vaisseau"]]
+    dp = d.get("pilote")                             # absent des vieilles sauvegardes
+    if dp:
+        u.pilote = mod_pilote.programme_depuis_dict(dp, u)
     return u
 
 

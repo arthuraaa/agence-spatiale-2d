@@ -311,7 +311,8 @@ sauvegarde. Désactivées, le jeu redevient 100 % manuel.
 Le bouton **Pilote** (touche `G` sur PC) propose ce qui est utile sur le moment :
 
 - **Mise en orbite** : depuis le pas de tir, virage progressif, largage des étages vides,
-  sortie de l'atmosphère puis circularisation. Arrivée vers 12-13 km, orbite quasi ronde.
+  sortie de l'atmosphère puis circularisation. Arrivée vers 20 km (trois fois le plafond
+  de l'air : assez haut pour qu'une rentrée garde sa marge), orbite quasi ronde.
 - **Exécuter la manœuvre** (aussi le bouton « Exécuter » du panneau du nœud) : le temps
   s'accélère jusqu'à l'allumage, le vaisseau pointe, pousse et coupe au bon moment.
   Pour une circularisation, il pousse à l'horizontale jusqu'à l'orbite la plus ronde ;
@@ -327,9 +328,14 @@ Le bouton **Pilote** (touche `G` sur PC) propose ce qui est utile sur le moment 
   rallume que pour la dernière ligne droite (sous 300 m). Avant de foncer, il
   juge la rentrée (parachute à temps ? le moteur peut-il arrêter la chute ?) : si c'est
   impossible, il refuse (« moteur trop faible ») ou remonte le périapside et rend la main
-  (« rentrée annulée ») — jamais de vaisseau sacrifié. Et si ses calculs disent non alors
-  que le vrai vol réussit (étages largués en route, masse qui diminue en brûlant), il joue
-  la descente en vol d'essai dans une copie de la simulation : si l'essai se pose, il fonce.
+  (« rentrée annulée ») — jamais de vaisseau sacrifié. Avant de renoncer, il retente
+  toutefois en douceur : périapside relevé au ras de l'air, l'atmosphère freine en
+  plusieurs passes, puis la voile ouvre en pleine passe ; ce plan n'est engagé que si
+  le vol d'essai complet se pose dans la copie de la simulation. Et si ses calculs
+  disent non alors que le vrai vol réussit (étages largués en route, masse qui diminue
+  en brûlant), il joue la descente en vol d'essai dans cette copie : si l'essai se
+  pose, il fonce. Le programme en cours suit la sauvegarde : au chargement, le pilote
+  reprend où il en était.
 - **Transfert vers…** (avec une lune ou une planète en cible) : pose le nœud de départ.
   Vers une planète, il attend la fenêtre de tir et l'annonce (« fenêtre dans 1,6 j »).
 - **Rendez-vous et amarrage** (avec un vaisseau en cible, par exemple la station) : calcule
