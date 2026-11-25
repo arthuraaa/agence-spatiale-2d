@@ -933,7 +933,7 @@ TOUT = {
     # ---- Réussites (jalons et stats de carrière) ----
     "reussites_titre": {"fr": "Réussites", "en": "Achievements"},
     "album_titre": {"fr": "Album photo", "en": "Photo album"},
-    "album_vide": {"fr": "Aucune photo pour l'instant. Les poses, les amarrages et le bouton « Photo » remplissent l'album.", "en": "No photos yet. Landings, dockings and the “Photo” button fill the album."},
+    "album_vide": {"fr": "Aucune photo pour l'instant. Les poses et les amarrages remplissent l'album.", "en": "No photos yet. Landings and dockings fill the album."},
     "supprimer": {"fr": "Supprimer", "en": "Delete"},
     "nouveau_jalon": {"fr": "★ Nouveau jalon : {titre}", "en": "★ New achievement: {titre}"},
     "jalon_haut_t": {"fr": "Haut dans le ciel", "en": "High in the sky"},

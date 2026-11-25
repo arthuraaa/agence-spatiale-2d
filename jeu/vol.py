@@ -109,12 +109,6 @@ class SceneVol:
         if a is not None:
             a.rcs = not a.rcs
 
-    def prendre_photo(self):
-        """Photo à la demande du joueur : prise au prochain dessin (monde seul, sans le HUD)."""
-        a = self.u.actif
-        corps = a.corps.nom if a is not None and a.corps is not None else "vol"
-        self.u.photos_demandees.append(("vol", corps))
-
     def changer_reference(self):
         a = self.u.actif
         if a is not None:
