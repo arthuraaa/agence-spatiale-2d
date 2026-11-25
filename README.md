@@ -324,9 +324,11 @@ Le bouton **Pilote** (touche `G` sur PC) propose ce qui est utile sur le moment 
   sur une planète : c'est la capture).
 - **Atterrissage automatique** : désorbitation si besoin, chute en temps accéléré, freinage
   au dernier moment, puis descente verticale douce jusqu'au contact. Avec un parachute
-  à bord, la voile se déploie moteurs coupés et fait le gros du freinage ; le moteur ne
-  rallume que pour la dernière ligne droite (sous 300 m). Avant de foncer, il
-  juge la rentrée (parachute à temps ? le moteur peut-il arrêter la chute ?) : si c'est
+  à bord, la voile se déploie moteurs coupés et fait le gros du freinage ; le moteur
+  ne rallume que pour la dernière ligne droite (à hauteur d'arrêt du sol). Avant de
+  foncer, il juge la
+  rentrée (parachute à temps ? le moteur peut-il arrêter la chute ?) AVANT d'ouvrir la
+  voile, et même de séparer un étage mort que la capsule seule sait poser : si c'est
   impossible, il refuse (« moteur trop faible ») ou remonte le périapside et rend la main
   (« rentrée annulée ») — jamais de vaisseau sacrifié. Avant de renoncer, il retente
   toutefois en douceur : périapside relevé au ras de l'air, l'atmosphère freine en

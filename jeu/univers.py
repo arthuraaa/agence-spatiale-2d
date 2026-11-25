@@ -755,7 +755,11 @@ class Univers:
             rvx, rvy = v.vx + w * v.y, v.vy - w * v.x
             q = 0.5 * rho * (rvx * rvx + rvy * rvy)
             err = angle_pi(atan2(-rvy, -rvx) - v.angle)
-            v.omega += (4.0 * err - 2.5 * v.omega) * h * min(1.0, q / 50.0)
+            # la voile porte le poids de la capsule à toute vitesse : le
+            # redressement ne doit pas mourir quand q s'effondre en fin de
+            # descente (rentrée plane à sec : le nez restait couché et la
+            # capsule touchait « posé de travers » / « impact à 8 m/s »)
+            v.omega += (4.0 * err - 2.5 * v.omega) * h * max(min(1.0, q / 50.0), 0.25)
         if actif and v.controlable():
             g = g or v.geometrie()
             couple = v.couple() + poussee * sin(CARDAN) * (g.longueur - g.haut)

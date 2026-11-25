@@ -53,16 +53,32 @@ parachute déployé dans la flamme)"
 
 def test_aide_sous_voile_gardee():
     u = Univers(bac_a_sable=True)
-    v = vaisseau_dans_lair(u, 80.0, 15.0)        # tout près du sol, presque doux
+    v = vaisseau_dans_lair(u, 12.0, 15.0)        # à hauteur d'arrêt, presque doux
     for p in v.parachutes():
         p.parachute = "ouvert"                   # voile déjà déployée
     prg = pilote.Atterrissage()
     prg.phase = "freinage"
     prg.piloter(u, v)
-    assert v.gaz > 0.0, "sous 300 m, l'aide moteur sous voile doit rallumer"
+    assert v.gaz > 0.0, "à hauteur d'arrêt sous voile, l'aide moteur doit rallumer"
+
+
+def test_voile_descend_seule():
+    """Sous voile, dérive tuée et hauteur d'arrêt confortable : le moteur doit
+    rester coupé jusqu'au ras du sol. Sinon la formule balistique « plane » à
+    ~6 m/s du haut de ses 300 m et brûle tout le carburant en pertes de gravité
+    (Pionnier : réservoir vide à 285 m, contact à 8,8 m/s)."""
+    u = Univers(bac_a_sable=True)
+    v = vaisseau_dans_lair(u, 280.0, 9.0)        # voile ouverte, terminal, haut
+    for p in v.parachutes():
+        p.parachute = "ouvert"
+    prg = pilote.Atterrissage()
+    prg.phase = "freinage"
+    prg.piloter(u, v)
+    assert v.gaz == 0.0, "sous voile, bien au-dessus de la hauteur d'arrêt : couper"
 
 
 if __name__ == "__main__":
     test_voile_sans_flamme()
     test_aide_sous_voile_gardee()
+    test_voile_descend_seule()
     print("--- voile sans flamme : OK")

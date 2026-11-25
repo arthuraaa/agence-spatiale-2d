@@ -71,12 +71,16 @@ def test_carriere_sans_crash():
     assert any("moteur trop faible" in m for m in fin), fin
     assert sum(p.carburant for p in v.pieces) > 0, "carburant brûlé pour rien"
 
-    # Hermès : pose raide impossible, douce non validée en vol d'ombre — le pilote
-    # renonce SANS détruire : main rendue, vaisseau en sécurité.
+    # Hermès : verdict honnête dans tous les cas — la rentrée se pose (le freinage
+    # final économe sous voile a rendu la pose possible) ou le pilote renonce SANS
+    # détruire : main rendue, vaisseau en sécurité (« moteur trop faible » d'emblée,
+    # ou « rentrée annulée » en vol après remontée au-dessus de l'air).
     v, fini, fin = voler("Hermès")
-    print("   Hermès :", fin)
-    assert not v.detruit and fini, fin
-    assert any("rentrée annulée" in m for m in fin), fin
+    print("   Hermès :", "posé" if v.mode == "pose" else fin)
+    assert not v.detruit and (fini or v.mode == "pose"), fin
+    assert (v.mode == "pose"
+            or any("moteur trop faible" in m for m in fin)
+            or any("rentrée annulée" in m for m in fin)), fin
 
     # Hercule : à la limite du posable — selon la vitesse d'intégration de la
     # montée (le temps accéléré change l'intégration au centimètre près), la
@@ -84,7 +88,7 @@ def test_carriere_sans_crash():
     # propre dans tous les cas (pose ou remontée en sécurité).
     v, fini, fin = voler("Hercule")
     print("   Hercule :", "posé" if v.mode == "pose" else fin)
-    assert not v.detruit and fini, fin
+    assert not v.detruit and (fini or v.mode == "pose"), fin
     assert v.mode == "pose" or any("rentrée annulée" in m for m in fin), fin
 
 
