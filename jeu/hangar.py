@@ -446,21 +446,21 @@ class SceneHangar:
         dessiner_pile(surf, v, g, (cx, oy), (0.0, -ech), (ech, 0.0), selection=sel)
         # zones cliquables : les boosters d'abord (ils sont prioritaires là où ils se trouvent)
         etages = statistiques_etages(pieces)
-        for k, pile, ecart, segs, demi, n in g.laterales:
+        for chemin, pile, ecart, segs, flanc, n in g.laterales:
             l_b = max(q.m.l for q in pile)
             for j, (q, (yh, yb)) in enumerate(zip(pile, segs)):
                 for cote in ((-1, 1) if n == 2 else (1,)):
                     if q.m.forme == "radial":                  # l'attache du haut, entre cœur et booster
-                        x0 = cx + cote * demi * ech
+                        x0 = cx + cote * flanc * ech
                         x1 = cx + cote * (ecart - l_b / 2) * ech
                         rect = pygame.Rect(min(x0, x1) - 4, oy - (segs[0][0] - 0.7) * ech - 8, abs(x1 - x0) + 8, 16)
                     else:
                         w = max(q.m.l * ech, 18)
                         rect = pygame.Rect(cx + cote * ecart * ech - w / 2, oy - yh * ech, w, max(6, (yh - yb) * ech))
-                    self.zones_pile.append((rect, (k, j)))
+                    self.zones_pile.append((rect, (chemin[0], j)))
             phase = next((n for n, e in enumerate(etages) if e.get("boosters")), None)
-            if phase is not None and est_paire_boosters(pieces[k]) and \
-                    pieces[k] is next((p for p in pieces[::-1] if est_paire_boosters(p)), None):
+            if phase is not None and est_paire_boosters(pieces[chemin[0]]) and \
+                    pieces[chemin[0]] is next((p for p in pieces[::-1] if est_paire_boosters(p)), None):
                 e = etages[phase]
                 xg = cx - (ecart + l_b / 2) * ech - 8
                 etiq = t("boosters · Δv {dv}", dv=fmt_nombre(e["dv"]))

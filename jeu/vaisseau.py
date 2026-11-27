@@ -12,6 +12,9 @@ Règles simples :
 
 Boosters latéraux : une pièce de la pile peut porter une paire de boosters symétriques
 (attribut `laterales` : la pile d'UN booster, doublée à l'affichage et dans les calculs).
+Une pièce peut aussi porter une annexe amarrée sur un port latéral (port_radial en tête
+de sa liste `laterales`) — et une annexe peut en porter une autre : les branches sont
+récursives, repérées par des chemins d'indices ((k,) = pile centrale, (k, j) = annexe...).
 Le bas des boosters est aligné sur le bas de leur pièce porteuse. Les boosters de la
 section du bas (sous le dernier découpleur) brûlent en même temps que le moteur central,
 chacun avec son propre carburant ; ESPACE les largue en premier.
@@ -117,7 +120,7 @@ def est_paire_boosters(p):
 
 def masse_avec_boosters(p):
     n = 2.0 if est_paire_boosters(p) else 1.0
-    return p.masse() + n * sum(q.masse() for q in p.laterales)
+    return p.masse() + n * sum(masse_avec_boosters(q) for q in p.laterales)
 
 
 def moteur_et_reservoirs(pile):
@@ -290,7 +293,9 @@ class Vaisseau:
         return sum(masse_avec_boosters(p) for p in self.pieces)
 
     def prix(self):
-        return sum(p.m.prix + (2 if est_paire_boosters(p) else 1) * sum(q.m.prix for q in p.laterales)
+        def prix_pile(pile, n):
+            return n * sum(q.m.prix + prix_pile(q.laterales, 1) for q in pile)
+        return sum(p.m.prix + prix_pile(p.laterales, 2 if est_paire_boosters(p) else 1)
                    for p in self.pieces)
 
     def mono(self):
@@ -319,12 +324,13 @@ class Vaisseau:
         vaisseau visible — au dézoom, quand tout est à l'écran, c'était le premier poste
         de CPU, et il se paye cash sur le téléphone."""
         # empreinte : identité de chaque pièce (le nez d'une pile peut changer de contenu)
-        # et son contenu (carburant, mono) — les boosters latéraux comptent dans la masse
+        # et son contenu (carburant, mono) — les branches latérales comptent dans la masse
+        def empreinte(p):
+            return [(id(p), p.carburant, p.mono)] + \
+                [e for q in p.laterales for e in empreinte(q)]
         cle = []
         for p in self.pieces:
-            cle.append((id(p), p.carburant, p.mono))
-            for q in p.laterales:
-                cle.append((id(q), q.carburant, q.mono))
+            cle.extend(empreinte(p))
         cle = tuple(cle)
         cache = getattr(self, "_geo", None)
         if cache is not None and cache[0] == cle:
@@ -358,24 +364,33 @@ class Vaisseau:
             masse += m
             y += p.m.h
         longueur_coeur = y
-        # boosters : (pièce porteuse, pile, écart latéral, hauts des pièces, demi-largeur du cœur)
+        # branches latérales : (chemin, pile, écart latéral, hauts des pièces, flanc porteur, n).
+        # chemin = indices pour remonter à la pièce : (k,) dans la pile centrale, (k, j)
+        # dans une annexe... Récursif : une annexe amarrée peut porter son propre port
+        # latéral, qui ajoute une nouvelle branche, plus loin à droite (en escalier).
         boosters = []
         dessus, dessous = 0.0, longueur_coeur
-        for k, p in enumerate(pieces):
-            if not p.laterales:
-                continue
-            l_b = max(q.m.l for q in p.laterales)
-            ecart = largeurs[k] / 2 + l_b / 2 + 0.15
-            n = 2.0 if est_paire_boosters(p) else 1.0                   # paire miroir ou annexe unique
-            yb = hauts[k] + p.m.h - sum(q.m.h for q in p.laterales)     # haut du booster
+
+        def descendre(porteur, chemin, pile, haut_porteur, flanc):
+            nonlocal masse, moment, dessus, dessous
+            n = 2.0 if est_paire_boosters(porteur) else 1.0              # paire miroir ou annexe unique
+            l_b = max(q.m.l for q in pile)
+            ecart = flanc + l_b / 2 + 0.15
+            yb = haut_porteur - sum(q.m.h for q in pile)                 # haut de la branche
             hauts_b = []
-            for q in p.laterales:
+            for i, q in enumerate(pile):
                 hauts_b.append(yb)
                 moment += n * q.masse() * (yb + q.m.h / 2)
                 masse += n * q.masse()
+                if q.laterales:                    # annexe d'annexe : nouvelle branche à droite
+                    descendre(q, chemin + (i,), q.laterales, yb + q.m.h, ecart + q.m.l / 2)
                 yb += q.m.h
             dessus, dessous = min(dessus, hauts_b[0]), max(dessous, yb)
-            boosters.append((k, p.laterales, ecart, hauts_b, largeurs[k] / 2))
+            boosters.append((chemin, pile, ecart, hauts_b, flanc, n))
+
+        for k, p in enumerate(pieces):
+            if p.laterales:
+                descendre(p, (k,), p.laterales, hauts[k] + p.m.h, largeurs[k] / 2)
         cdm = moment / masse if masse > 0 else 0.0
         g = Geometrie()
         g.masse = masse
@@ -390,9 +405,8 @@ class Vaisseau:
         frontale = 3.14159 * (max(largeurs) / 2) ** 2 if largeurs else 1.0
         cote = longueur_coeur * (max(largeurs) if largeurs else 1.0)
         largeur_max = max(largeurs) if largeurs else 1.0
-        for k, pile, ecart, hauts_b, demi in boosters:
+        for chemin, pile, ecart, hauts_b, flanc, n in boosters:
             segs = [(cdm - hb, cdm - hb - q.m.h) for hb, q in zip(hauts_b, pile)]
-            n = 2.0 if est_paire_boosters(pieces[k]) else 1.0
             for q, (yh, yb) in zip(pile, segs):
                 ym = 0.5 * (yh + yb)
                 inertie += n * q.masse() * (ym * ym + ecart * ecart + (q.m.h ** 2 + q.m.l ** 2) / 12.0)
@@ -400,7 +414,7 @@ class Vaisseau:
             frontale += n * 3.14159 * (l_b / 2) ** 2
             cote += n * l_b * sum(q.m.h for q in pile)
             largeur_max = max(largeur_max, (2 * ecart + l_b) if n == 2 else (ecart + l_b / 2))
-            g.laterales.append((k, pile, ecart, segs, demi, n))
+            g.laterales.append((chemin, pile, ecart, segs, flanc, n))
         g.inertie = max(inertie, 1.0)
         g.largeur_max = largeur_max
         g.surface_frontale, g.surface_cote = frontale, cote
@@ -574,20 +588,53 @@ class Vaisseau:
             return etat[0] + ca * g.nez, etat[1] + sa * g.nez, ca, sa
         return etat[0] + ca * g.fond, etat[1] + sa * g.fond, -ca, -sa
 
-    def ports_radiaux(self):
-        """Indices k des pièces portant un port latéral libre (rien d'amarré dessus)."""
-        return [k for k, p in enumerate(self.pieces)
-                if p.laterales and p.laterales[0].m.cle == "port_radial"
-                and len(p.laterales) == 1]
+    def piece_au_chemin(self, chemin):
+        """La pièce désignée par un chemin d'indices : (k,) = pieces[k],
+        (k, j) = pieces[k].laterales[j] (une pièce d'annexe), etc."""
+        p = self.pieces[chemin[0]]
+        for j in chemin[1:]:
+            p = p.laterales[j]
+        return p
 
-    def point_port_radial(self, etat, k):
-        """Position (relative au corps) et direction sortante du port latéral de la pièce k.
+    def _chemins_ports_radiaux(self, libre):
+        """Chemins des pièces portant un port latéral, libre (rien d'amarré dessus)
+        ou occupé par une annexe, à tous les niveaux de branches."""
+        out = []
+
+        def plonger(pile, chemin):
+            for i, p in enumerate(pile):
+                if p.laterales and p.laterales[0].m.cle == "port_radial" \
+                        and (len(p.laterales) == 1) == libre:
+                    out.append(chemin + (i,))
+                plonger(p.laterales, chemin + (i,))
+
+        plonger(self.pieces, ())
+        return out
+
+    def ports_radiaux(self):
+        """Chemins des pièces portant un port latéral libre (rien d'amarré dessus)."""
+        return self._chemins_ports_radiaux(True)
+
+    def chemins_annexes(self):
+        """Chemins des pièces portant une annexe amarrée (port latéral occupé)."""
+        return self._chemins_ports_radiaux(False)
+
+    def point_port_radial(self, etat, chemin):
+        """Position (relative au corps) et direction sortante du port latéral de la pièce
+        désignée par chemin ((k,) dans la pile centrale, (k, j) dans une annexe...).
         Il est toujours sur le côté droit du vaisseau (perpendiculaire à l'axe)."""
         g = self.geometrie()
         ca, sa = cos(self.angle), sin(self.angle)
         px, py = sa, -ca                              # perpendiculaire, vers la droite
-        yc = 0.5 * (g.segments[k][0] + g.segments[k][1])
-        r = g.largeurs[k] / 2 + 0.5                   # la surface du port dépasse du flanc
+        if len(chemin) == 1:
+            yc = 0.5 * (g.segments[chemin[0]][0] + g.segments[chemin[0]][1])
+            r = g.largeurs[chemin[0]] / 2 + 0.5       # la surface du port dépasse du flanc
+        else:                                          # pièce portée par une branche latérale
+            branche = next(e for e in g.laterales if e[0] == chemin[:-1])
+            pile, ecart, segs = branche[1], branche[2], branche[3]
+            j = chemin[-1]
+            yc = 0.5 * (segs[j][0] + segs[j][1])
+            r = ecart + pile[j].m.l / 2 + 0.5          # dépasse du flanc extérieur de la porteuse
         return etat[0] + ca * yc + px * r, etat[1] + sa * yc + py * r, px, py
 
     # ------------------------------------------------------------ utilitaires

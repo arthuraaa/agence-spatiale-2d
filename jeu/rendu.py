@@ -357,6 +357,17 @@ def _fumee(surf, P, yb, l, z, vide):
             pass
 
 
+def chaleur_rentree(rho, vitesse_air):
+    """Chaleur de rentrée (0 à 1) : le flux monte en v³ et ne démarre qu'aux
+    vitesses orbitales — rampe douce entre 250 et 400 m/s pour qu'un décollage
+    rapide à basse altitude ne rogue pas. Sert au plasma (rendu), à la voile
+    incandescente et au grondement/vibration de l'écran de vol."""
+    if vitesse_air < 250.0:
+        return 0.0
+    s = min(1.0, (vitesse_air - 250.0) / 150.0)
+    return min(1.0, s * rho * vitesse_air ** 3 / 20000000.0)
+
+
 def _plasma(surf, sx, sy, ux, uy, taille, chaleur):
     """Traînée de plasma derrière un vaisseau qui rentre dans l'atmosphère.
     (ux, uy) : direction du sillage à l'écran ; chaleur dans (0, 1)."""
@@ -438,16 +449,18 @@ def _dessiner_boosters(surf, v, g, P, flamme, vide, selection, nuit):
     (port latéral) seulement à droite."""
     from .vaisseau import porteurs_actifs, moteur_et_reservoirs, indice_moteur
     actifs = porteurs_actifs(v.pieces) if flamme > 0.0 else []
-    for k, pile, ecart, segs, demi, n in getattr(g, "laterales", []):
+    for chemin, pile, ecart, segs, flanc, n in getattr(g, "laterales", []):
         i_moteur = None
-        if v.pieces[k] in actifs and sum(r.carburant for r in moteur_et_reservoirs(pile)[1]) > 0:
+        # seuls les boosters du premier niveau poussent : les sous-annexes sont des modules
+        if len(chemin) == 1 and v.pieces[chemin[0]] in actifs and \
+                sum(r.carburant for r in moteur_et_reservoirs(pile)[1]) > 0:
             i_moteur = indice_moteur(pile)
         haut_b, bas_b = segs[0][0], segs[-1][1]
         l_b = max(q.m.l for q in pile)
         for cote in ((-1.0, 1.0) if n == 2 else (1.0,)):
             # deux attaches (le découpleur radial) entre la pile centrale et le booster
             for ya in (haut_b - 0.9, bas_b + 1.2):
-                x0, x1 = cote * demi, cote * (ecart - l_b / 2)
+                x0, x1 = cote * flanc, cote * (ecart - l_b / 2)
                 pygame.draw.polygon(surf, melange((60, 62, 70), (22, 28, 46), nuit),
                                     [P(x0, ya), P(x1, ya), P(x1, ya - 0.35), P(x0, ya - 0.35)])
             for j, (q, (yh, yb)) in enumerate(zip(pile, segs)):
@@ -890,7 +903,8 @@ def _dessiner_vaisseaux(surf, u, cam, temps_reel):
             dessiner_pile(surf, v, g, (sx, sy), (dx * z, dy * z), (px * z, py * z), flamme,
                           1.0 - min(1.0, rho / 1.225), jour=jour)
             # plasma de rentrée : la coque chauffe quand l'air est dense et la vitesse forte
-            chaleur = min(1.0, rho * (e[2] * e[2] + e[3] * e[3]) / 2000000.0)
+            w = v.corps.vitesse_rotation
+            chaleur = chaleur_rentree(rho, hypot(e[2] + w * e[1], e[3] - w * e[0]))
             if chaleur > 0.05:
                 cvx, cvy = cam.direction_ecran(e[2], e[3])
                 nv = hypot(cvx, cvy) or 1.0
@@ -1024,7 +1038,7 @@ def _halo_rentree(surf, u):
         return
     x, y, vx, vy = u.etat(a)              # vitesse air : on enlève la rotation de la planète
     w = c.vitesse_rotation
-    chaleur = min(1.0, rho * ((vx + w * y) ** 2 + (vy - w * x) ** 2) / 2000000.0)
+    chaleur = chaleur_rentree(rho, hypot(vx + w * y, vy - w * x))
     if chaleur < 0.25:                    # le plasma près de la coque suffit en dessous
         return
     l, h = surf.get_size()

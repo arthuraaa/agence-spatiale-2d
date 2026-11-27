@@ -71,10 +71,12 @@ class Historique:
 
 
 def faire_le_plein(v):
-    """Tous les réservoirs du vaisseau (boosters compris) pleins de carburant et de monergol."""
-    for p in v.pieces:
-        for q in [p] + list(p.laterales):
-            q.carburant, q.mono = q.m.carburant, q.m.mono
+    """Tous les réservoirs du vaisseau (boosters et annexes compris) pleins de carburant et de monergol."""
+    def tout_plein(pile):
+        for p in pile:
+            p.carburant, p.mono = p.m.carburant, p.m.mono
+            tout_plein(p.laterales)
+    tout_plein(v.pieces)
 
 
 def mettre_en_orbite(u, v):

@@ -6,7 +6,7 @@ import pygame
 from .constantes import (BLANC, GRIS, CYAN, VERT, ROUGE, JAUNE, ORANGE, ACCEL_MAX_PHYSIQUE,
                          NOEUD_CLIC, NOEUD_SENSIBILITE, NOEUD_PAS_MOLETTE,
                          NOEUD_RAYON_POIGNEE_TACTILE, NOEUD_CLIC_TACTILE, TOLERANCE_DOIGT)
-from .rendu import Camera, dessiner_monde, objet_sous_souris
+from .rendu import Camera, dessiner_monde, objet_sous_souris, chaleur_rentree
 from .hud import Hud
 from .hud_tactile import HudTactile, LIBELLES_CAM, LIBELLES_REF
 from .tactile import Doigts
@@ -158,11 +158,12 @@ class SceneVol:
             if rho > 0.0:
                 x, y, vx, vy = u.etat(a)
                 w = c.vitesse_rotation
-                pression = 0.5 * rho * ((vx + w * y) ** 2 + (vy - w * x) ** 2)
+                v_air = hypot(vx + w * y, vy - w * x)
+                pression = 0.5 * rho * v_air * v_air
                 vent = min(0.8, pression / 25000.0)
                 # même formule que le plasma (rendu) : la coque rougeoye, ça gronde et ça vibre
-                chaleur = min(1.0, 2.0 * pression / 2000000.0)
-                rentree = min(0.9, 1.1 * chaleur) if chaleur > 0.12 else 0.0
+                chaleur = chaleur_rentree(rho, v_air)
+                rentree = min(0.9, 1.1 * chaleur) if chaleur > 0.25 else 0.0
                 self.cam.tremble = chaleur
             else:
                 self.cam.tremble = 0.0

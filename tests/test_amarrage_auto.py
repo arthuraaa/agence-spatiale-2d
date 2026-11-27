@@ -61,9 +61,9 @@ def test_amarrage_auto_sur_port_lateral():
     station = u.vaisseaux[0]
     station.pieces[1].laterales = [Piece("port_radial")]
     es = u.etat(station)
-    k = station.ports_radiaux()[0]
+    chemin = station.ports_radiaux()[0]
     v = construire("Navette", ["port", "capsule", "reservoir_s", "moustique"], u.terre)
-    bx, by, bdx, bdy = station.point_port_radial(es, k)
+    bx, by, bdx, bdy = station.point_port_radial(es, chemin)
     g = v.geometrie()
     v.angle = atan2(-bdy, -bdx)                            # le nez face au port latéral
     v.x = bx + bdx * 60.0 + bdx * g.nez

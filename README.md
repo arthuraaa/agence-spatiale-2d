@@ -202,6 +202,9 @@ confidentialité).
   tout ce que tu ajoutes va dans l'**annexe** accrochée à ce port (modules, réservoirs...) :
   de quoi construire une station ramifiée. En vol, amarrer un vaisseau sur ce port le
   fusionne dans la station (il ne se pilote plus tout seul), et `U` le détache.
+  L'annexe peut elle-même recevoir un port latéral : une navette amarrée là s'accroche
+  en **sous-annexe**, un cran plus loin à droite — et chaque niveau se détache séparément
+  avec `U` (les moteurs ne poussent que dans le cœur et les boosters du premier niveau).
 
 ## Commandes (clavier AZERTY)
 

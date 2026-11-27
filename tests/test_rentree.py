@@ -52,6 +52,21 @@ def test_halo_rentree():
     assert surf.get_at((100, 50))[:3] == (0, 0, 255), "pas de voile hors mode physique"
 
 
+def test_chaleur_visible_au_freinage_carriere():
+    """Recalibrage : le plasma doit apparaître pendant le freinage atmosphérique
+    d'une rentrée de carrière (5 km à 736 m/s sur Terre), rester sous la voile,
+    ne rien montrer au décollage (1 km à 200 m/s) ni sous la voile ouverte,
+    et embraser tout l'écran sur une rentrée raide (2 km à 900 m/s)."""
+    u = Univers(bac_a_sable=True)
+    t = u.terre
+    frein = rendu.chaleur_rentree(t.densite(5000.0), 736.0)
+    assert frein >= 0.05, "plasma invisible au freinage de la rentrée carrière"
+    assert frein < 0.25, "pas encore de voile orange au freinage normal"
+    assert rendu.chaleur_rentree(t.densite(1000.0), 200.0) == 0.0, "rien au décollage"
+    assert rendu.chaleur_rentree(t.densite(3000.0), 12.0) == 0.0, "rien sous la voile"
+    assert rendu.chaleur_rentree(t.densite(2000.0), 900.0) >= 0.25, "voile en rentrée raide"
+
+
 def test_tremblement():
     """La caméra vibre d'une frame à l'autre pendant la rentrée, et se tait ensuite."""
     u = Univers(bac_a_sable=True)
@@ -71,6 +86,7 @@ def test_tremblement():
 
 if __name__ == "__main__":
     test_son_rentree()
+    test_chaleur_visible_au_freinage_carriere()
     test_halo_rentree()
     test_tremblement()
     print("--- rentree : OK")
