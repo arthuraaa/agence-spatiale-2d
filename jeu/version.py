@@ -4,5 +4,5 @@
 Pour passer à la version suivante : python outils/nouvelle_version.py 1.6.1
 (met aussi à jour VERSION_CODE et android.numeric_version dans buildozer.spec).
 """
-__version__ = "1.9.5"
-VERSION_CODE = 21      # entier qui doit augmenter à CHAQUE envoi sur Google Play
+__version__ = "1.9.6"
+VERSION_CODE = 22      # entier qui doit augmenter à CHAQUE envoi sur Google Play
