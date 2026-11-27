@@ -316,6 +316,47 @@ class Vaisseau:
     def contient_proprietaire(self, nom):
         return any(p.proprietaire == nom for p in self.pieces)
 
+    # ------------------------------------------------------------ foreuse (extraction au sol)
+    def _pieces_toutes(self):
+        """Toutes les pièces du vaisseau, boosters et annexes compris."""
+        def plonger(pile):
+            for p in pile:
+                yield p
+                yield from plonger(p.laterales)
+        return plonger(self.pieces)
+
+    def foreuse(self):
+        """(kg/s extraits, kg restants avant d'être plein) si la foreuse mord le sol,
+        sinon (0.0, 0.0). Il faut être posé, porter une foreuse et être sur un corps
+        exploitable (corps.forage > 0)."""
+        if self.mode != "pose" or self.corps.forage <= 0.0:
+            return 0.0, 0.0
+        pieces = list(self._pieces_toutes())
+        if not any(p.m.forme == "foreuse" for p in pieces):
+            return 0.0, 0.0
+        reste = sum(p.m.carburant - p.carburant for p in pieces)
+        return (self.corps.forage, reste) if reste > 1e-9 else (0.0, 0.0)
+
+    def forer(self, dt):
+        """Extraction de carburant pendant dt secondes de jeu : remplit les réservoirs
+        (réparti au prorata du vide), ajoute un dixième de ce flux en monergol, et pose
+        le drapeau d'extraction dont se servent missions et jalons."""
+        taux, reste = self.foreuse()
+        if taux <= 0.0 or dt <= 0.0:
+            return
+        q = min(taux * dt, reste)
+        pieces = list(self._pieces_toutes())
+        vides = [(p, p.m.carburant - p.carburant) for p in pieces if p.m.carburant > 0.0]
+        libre = sum(v for _, v in vides)
+        for p, v in vides:
+            p.carburant += q * v / libre
+        monos = [(p, p.m.mono - p.mono) for p in pieces if p.m.mono > 0.0]
+        mono_libre = sum(v for _, v in monos)
+        if mono_libre > 0.0:
+            for p, v in monos:
+                p.mono += 0.1 * q * v / mono_libre
+        self.drapeaux.add("extraction:" + self.corps.nom)
+
     # ------------------------------------------------------------ géométrie
     def geometrie(self):
         """Positions des pièces le long de l'axe, par rapport au centre de masse (haut = +).

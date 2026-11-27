@@ -313,6 +313,12 @@ def formes_piece(p, l, h):
                 ((90, 130, 200), _rect(-d, h * .47, d, h * .53)),
                 ((40, 72, 116), _rect(-0.3, h * .18, 0.3, h * .28)),
                 ((40, 72, 116), _rect(-0.3, h * .68, 0.3, h * .78))]
+    if f == "foreuse":
+        return [(c, _rect(-d, h * .45, d, h)),                       # caisse et mécanique
+                ((150, 154, 166), _rect(-d, h * .82, d, h)),         # bandeau
+                ((58, 60, 68), [(-l * .22, h * .45), (l * .22, h * .45), (l * .1, 0), (-l * .1, 0)]),
+                ((200, 200, 205), _rect(-l * .07, 0, l * .07, h * .5)),   # tube de forage
+                ((230, 200, 60), _rect(-l * .3, h * .55, l * .3, h * .65))]  # voyant d'activité
     if f == "panneaux":
         out = [(c, _rect(-d, 0, d, h)), ((150, 154, 166), _rect(-d - 6.4, h * .46, d + 6.4, h * .54))]
         for s in (-1, 1):

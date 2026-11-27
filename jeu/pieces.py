@@ -101,6 +101,9 @@ _LISTE = [
     ModelePiece("panneaux", "Panneaux solaires", "Station", "panneaux", 300, 1.5, 1.0, 800,
                 debloque_par="orbite", couleur=(110, 114, 126),
                 description="Pour satellites et stations."),
+    ModelePiece("foreuse", "Foreuse", "Station", "foreuse", 250, 1.5, 1.0, 4000,
+                debloque_par="lune_sol", couleur=(120, 124, 136),
+                description="Extrait du carburant du sol d'un corps exploitable, à l'arrêt."),
 ]
 
 CATALOGUE = {m.cle: m for m in _LISTE}      # dict ordonné : sert aussi à l'affichage

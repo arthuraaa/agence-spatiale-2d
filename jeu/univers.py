@@ -630,6 +630,9 @@ class Univers:
                     self._rotation_sur_rails(v, dt, v is self.actif)
         self._gerer_modes()
         self._verifier_amarrage()
+        for v in self.vaisseaux:                  # extraction au sol : vaisseaux posés
+            if v.mode == "pose" and not v.detruit:
+                v.forer(dt)
         self._periodique(dt_reel)
         if self.triche.get("carburant") and self.actif is not None:
             from .triche import faire_le_plein        # triche : réservoirs toujours pleins

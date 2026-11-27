@@ -20,7 +20,7 @@ class Corps:
     def __init__(self, nom, rayon, g, parent=None, a=0.0, phase=0.0,
                  couleur=(150, 150, 150), atmosphere=None, rotation=0.0,
                  gazeux=False, etoile=False, taches=(), anneaux=None,
-                 couleur_nuit=None, couleur_sol=None, pas_de_tir=False):
+                 couleur_nuit=None, couleur_sol=None, pas_de_tir=False, forage=0.0):
         self.nom = nom
         self.R = float(rayon)                 # rayon (m)
         self.g = g                            # gravité de surface (m/s²)
@@ -34,6 +34,7 @@ class Corps:
         self.couleur_sol = couleur_sol or couleur          # sol vu de près
         self.couleur_sol_nuit = tuple(int(c * 0.3) for c in self.couleur_sol)
         self.gazeux = gazeux or etoile        # pas de surface : on ne peut pas s'y poser
+        self.forage = forage                  # carburant extrait du sol par une foreuse (kg/s)
         self.etoile = etoile
         self.taches = taches                  # décor : (angle, distance, taille, couleur)
         self.anneaux = anneaux                # (rayon int., rayon ext., couleur) en rayons du corps
@@ -127,7 +128,7 @@ def creer_systeme_solaire():
     soleil = Corps("Soleil", 6_957_000, 274.0, couleur=(255, 214, 90), etoile=True)
 
     mercure = Corps("Mercure", 24_397, 3.70, soleil, 5.791e8, 2.1, (150, 140, 130),
-                    rotation=506_000,
+                    rotation=506_000, forage=3,
                     taches=[(0.5, 0.4, 0.18, (120, 112, 104)), (2.8, 0.6, 0.22, (128, 120, 112)),
                             (4.4, 0.3, 0.15, (115, 108, 100))])
     venus = Corps("Vénus", 60_518, 8.87, soleil, 1.0821e9, 4.0, (226, 190, 120),
@@ -140,10 +141,11 @@ def creer_systeme_solaire():
                           (2.6, 0.62, 0.26, (180, 160, 100)), (3.9, 0.48, 0.33, (70, 140, 80)),
                           (5.2, 0.60, 0.22, (90, 150, 86)), (0.0, 0.0, 0.16, (240, 244, 250))])
     lune = Corps("Lune", 17_374, 1.62, terre, 3.844e6, 1.0, (170, 170, 172), rotation=None,
+                 forage=3,
                  taches=[(0.7, 0.4, 0.22, (130, 130, 134)), (2.4, 0.55, 0.18, (138, 138, 142)),
                          (4.1, 0.35, 0.26, (124, 124, 130)), (5.4, 0.6, 0.14, (140, 140, 146))])
     mars = Corps("Mars", 33_895, 3.71, soleil, 2.279e9, 0.9, (196, 100, 62),
-                 atmosphere=(5_000, 0.020, 1_100, (226, 160, 120)), rotation=8_864,
+                 atmosphere=(5_000, 0.020, 1_100, (226, 160, 120)), rotation=8_864, forage=4,
                  taches=[(0.9, 0.5, 0.28, (160, 78, 48)), (3.0, 0.55, 0.24, (150, 72, 46)),
                          (4.6, 0.4, 0.20, (170, 86, 54)), (0.0, 0.0, 0.13, (240, 236, 232))])
     jupiter = Corps("Jupiter", 699_110, 24.79, soleil, 7.785e9, 3.3, (206, 170, 130),
@@ -152,12 +154,16 @@ def creer_systeme_solaire():
                             (0.0, 0.0, 0.40, (180, 130, 96)), (0.0, 0.0, 0.2, (214, 180, 140)),
                             (2.0, 0.70, 0.10, (190, 90, 70))])
     io = Corps("Io", 18_216, 1.796, jupiter, 4.217e6, 0.0, (226, 206, 96), rotation=None,
+               forage=2,
                taches=[(1.0, 0.5, 0.2, (200, 150, 60)), (3.5, 0.4, 0.25, (240, 220, 140))])
     europe = Corps("Europe", 15_608, 1.314, jupiter, 6.709e6, 2.0, (200, 190, 170), rotation=None,
+                   forage=2,
                    taches=[(2.0, 0.5, 0.25, (170, 150, 130))])
     ganymede = Corps("Ganymède", 26_341, 1.428, jupiter, 1.0704e7, 4.0, (150, 140, 128), rotation=None,
+                     forage=2,
                      taches=[(0.6, 0.5, 0.3, (120, 112, 104)), (3.4, 0.45, 0.25, (176, 170, 160))])
     callisto = Corps("Callisto", 24_103, 1.235, jupiter, 1.8827e7, 1.0, (110, 100, 92), rotation=None,
+                     forage=2,
                      taches=[(1.2, 0.5, 0.2, (140, 132, 124)), (4.0, 0.5, 0.22, (90, 82, 76))])
     saturne = Corps("Saturne", 582_320, 10.44, soleil, 1.4335e10, 5.2, (220, 196, 140),
                     atmosphere=(25_000, 0.8, 5_900, (226, 206, 160)), rotation=3_836, gazeux=True,
@@ -165,6 +171,7 @@ def creer_systeme_solaire():
                     taches=[(0.0, 0.0, 0.8, (206, 180, 124)), (0.0, 0.0, 0.5, (228, 208, 156)),
                             (0.0, 0.0, 0.25, (204, 178, 122))])
     titan = Corps("Titan", 25_747, 1.352, saturne, 1.22187e7, 3.0, (214, 160, 70), rotation=None,
+                  forage=6,
                   atmosphere=(10_000, 5.4, 2_000, (226, 170, 80)))
     uranus = Corps("Uranus", 253_620, 8.87, soleil, 2.8725e10, 0.5, (150, 214, 222),
                    atmosphere=(20_000, 0.5, 2_800, (170, 224, 230)), rotation=-6_206, gazeux=True)
@@ -172,6 +179,7 @@ def creer_systeme_solaire():
                     atmosphere=(20_000, 0.6, 2_000, (100, 140, 235)), rotation=5_800, gazeux=True,
                     taches=[(2.2, 0.55, 0.14, (50, 80, 180))])
     pluton = Corps("Pluton", 11_883, 0.62, soleil, 5.906e10, 4.4, (196, 176, 156), rotation=55_200,
+                   forage=2,
                    taches=[(1.0, 0.4, 0.35, (230, 220, 206))])
 
     liste = [soleil, mercure, venus, terre, lune, mars, jupiter, io, europe, ganymede,

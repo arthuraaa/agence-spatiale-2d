@@ -31,6 +31,13 @@ def _pose_sur_terre_avec(drapeau):
     return lambda u, v: _sur(v, "Terre") and v.mode == "pose" and drapeau in v.drapeaux
 
 
+def _carburant_dailleurs(u, v):
+    """Posé sur Terre avec du carburant extrait du sol d'un autre corps (foreuse)."""
+    if v is None or not _sur(v, "Terre") or v.mode != "pose":
+        return False
+    return any(d.startswith("extraction:") and d != "extraction:Terre" for d in v.drapeaux)
+
+
 def _satellites(u, corps_nom="Terre"):
     """Satellites = vaisseaux avec une sonde et des panneaux, en orbite stable autour de `corps_nom`."""
     for s in u.vaisseaux:
@@ -102,6 +109,12 @@ MISSIONS = [
             _drapeau("pose:Lune")),
     Mission("lune_retour", "Retour de la Lune", "Revenir sur Terre après s'être posé sur la Lune.",
             40_000, _pose_sur_terre_avec("pose:Lune")),
+    Mission("raffinerie", "Raffinerie lunaire",
+            "Extraire du carburant du sol lunaire avec une foreuse.", 30_000,
+            _drapeau("extraction:Lune")),
+    Mission("ravitaillement", "Ravitaillement spatial",
+            "Revenir poser sur Terre du carburant extrait du sol d'un autre monde.", 60_000,
+            _carburant_dailleurs),
     Mission("mars_soi", "Cap sur Mars", "Entrer dans la sphère d'influence de Mars.", 40_000,
             _drapeau("soi:Mars")),
     Mission("mars_orbite", "Orbite martienne", "Se mettre en orbite autour de Mars.", 50_000,

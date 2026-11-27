@@ -205,6 +205,12 @@ confidentialité).
   L'annexe peut elle-même recevoir un port latéral : une navette amarrée là s'accroche
   en **sous-annexe**, un cran plus loin à droite — et chaque niveau se détache séparément
   avec `U` (les moteurs ne poussent que dans le cœur et les boosters du premier niveau).
+- **Foreuse** (débloquée après l'Alunissage) : posée au sol d'un monde exploitable (Lune,
+  Mars, Mercure, Titan, Io, Europe, Ganymède, Callisto, Pluton), elle extrait du carburant
+  du sol (le HUD affiche le débit, par ex. « Foreuse : +3,0 kg/s » sur la Lune) et le verse
+  dans tes réservoirs, avec un peu de monergol en prime. Ça suit le temps accéléré : une
+  base laissée en place remplit ses réservoirs pendant que tu fais autre chose. Deux
+  missions s'y rattachent : *Raffinerie lunaire* et *Ravitaillement spatial*.
 
 ## Commandes (clavier AZERTY)
 

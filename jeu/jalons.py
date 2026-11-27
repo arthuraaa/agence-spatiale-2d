@@ -51,6 +51,9 @@ JALONS = [
     Jalon("callisto", "jalon_callisto_t", _drapeau("pose:Callisto")),
     Jalon("retour_mars", "jalon_retour_mars_t", _pose_sur_terre_avec("pose:Mars")),
     Jalon("drapeau", "jalon_drapeau_t", lambda u, v: bool(u.drapeaux_sol)),
+    Jalon("extraction", "jalon_forage_t",
+          lambda u, v: any(d.startswith("extraction:")
+                           for s in u.vaisseaux for d in s.drapeaux)),
     Jalon("photo", "jalon_photo_t", lambda u, v: len(album.lister()) >= 1),
     Jalon("io", "jalon_io_t", _drapeau("pose:Io")),
     Jalon("europe", "jalon_europe_t", _drapeau("pose:Europe")),

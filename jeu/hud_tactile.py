@@ -297,6 +297,9 @@ class HudTactile(Hud):
                   (t("Vit. verticale"), fmt_vitesse(v_vert)),
                   (t("Apoapside"), (fmt_distance(o.ra - c.R) if o.elliptique else t("évasion")) if valide else "—"),
                   (t("Périapside"), fmt_distance(o.rp - c.R) if valide else "—")]
+        if a.foreuse()[0] > 0.0:                      # posé au sol : la foreuse remplace les apo/péri « — »
+            lignes[-2:] = [(t("Foreuse"), "+%s kg/s" % fmt_nombre(a.foreuse()[0], 1)),
+                           (t("Reste à forer"), "%s kg" % fmt_nombre(a.foreuse()[1]))]
         panneau(surf, (MX, M, L_PANNEAU, H_INFOS))
         texte(surf, a.nom, (MX + 10, M + 6), 17, BLANC, gras=True)
         texte(surf, "%s · %s" % (t(c.nom), u.situation(a)), (MX + 10, M + 29), 13, CYAN)

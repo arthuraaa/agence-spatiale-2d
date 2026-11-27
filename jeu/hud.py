@@ -196,6 +196,8 @@ class Hud:
                                                if a.mode != "pose" else 0.0)),
                   (t("Vitesse ({ref})", ref=a.ref_vitesse), fmt_vitesse(hypot(rvx, rvy))),
                   (t("Vit. verticale"), fmt_vitesse(v_vert))]
+        if a.foreuse()[0] > 0.0:                      # foreuse en train de mordre le sol
+            lignes.append((t("Foreuse"), "+%s kg/s" % fmt_nombre(a.foreuse()[0], 1)))
         if o is not None and not o.degeneree:
             lignes.append((t("Apoapside"), fmt_distance(o.ra - c.R) if o.elliptique else t("évasion")))
             lignes.append((t("Périapside"), fmt_distance(o.rp - c.R)))
