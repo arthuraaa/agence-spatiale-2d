@@ -1151,10 +1151,14 @@ class Atterrissage(Programme):
                                        s_voile=700.0 * len(v.parachutes()),
                                        contact_max=1e9, h_max=1e9, t0=u.t, info=info2)
                 self.voile_a_temps = bool(ouvre and info2.get("alt_ouv") is not None)
+            # voile ouverte : jamais de moteur — le gonflage laisse la gravité
+            # remonter la vitesse au-dessus de 250, et l'on rallumait sous la
+            # voile déployée (flammes hautes au milieu de la descente, v1.9.4)
             if ((self.brute_voile
                     or (self.rasant and c.densite(u.altitude(v)) > 0.0
                         and rp_actuel() < rp_cible_desorbite(c, monter=True) - 1000.0))
-                    and vitesse > 250.0 and peut_freiner):
+                    and vitesse > 250.0 and peut_freiner
+                    and not v.parachute_ouvert()):
                 # l'air seul n'amènera jamais la voile à sa vitesse d'ouverture : le
                 # moteur doit freiner. Mais au bon moment : brûler tôt dans le vide ne
                 # sert qu'à ce que la gravité referait — on attend que la distance
@@ -1231,7 +1235,7 @@ class Atterrissage(Programme):
                 # chaque passage gaspillerait le carburant qu'il faut pour la pose
                 tr2 = v.troncons[0] if v.troncons else None
                 if (c.atm_h > 0.0 and v.parachutes() and vitesse > 250.0
-                        and not self.rasant
+                        and not self.rasant and not v.parachute_ouvert()
                         and c.densite(u.altitude(v)) > 0.0
                         and tr2 is not None and tr2.fin in ("impact", "atmo")):
                     v.gaz = 1.0
